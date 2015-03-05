@@ -13,39 +13,40 @@ class DualPeerConnection {
   
   DualPeerConnection(Map rtcConfiguration, this._signalingChannel) {
     _pc = new RtcPeerConnection(rtcConfiguration);
-    
+    // Always listen to IceCandidates!
     _pc.onIceCandidate.listen(_onIceCandidate);
-    
-    _signalingChannel.onMessage.listen((SignalingMessage message) {
-      if(message is RtcSessionDescriptionMessage) {
-        RtcSessionDescription desc = message.description;
-        if(desc.type == 'offer') {
-          _pc.onDataChannel.listen((RtcDataChannelEvent ev) {
-            initChannel(ev.channel);
-          });
-          
-          print('offer received');
-          _pc.setRemoteDescription(desc).then((_) {
-            _pc.createAnswer().then((RtcSessionDescription answer) {
-              _pc.setLocalDescription(answer).then((_) {
-                _signalingChannel.send(answer);
-              });
+    _signalingChannel.onMessage.listen(onSignalingMessage);
+  }
+  
+  void onSignalingMessage(SignalingMessage message) {
+    if(message is RtcSessionDescriptionMessage) {
+      RtcSessionDescription desc = message.description;
+      if(desc.type == 'offer') {
+        _pc.onDataChannel.listen((RtcDataChannelEvent ev) {
+          initChannel(ev.channel);
+        });
+        
+        print('offer received');
+        _pc.setRemoteDescription(desc).then((_) {
+          _pc.createAnswer().then((RtcSessionDescription answer) {
+            _pc.setLocalDescription(answer).then((_) {
+              _signalingChannel.send({'rtc_session_description': answer});
             });
           });
-        } else {
-          print('answer received');
-          _pc.setRemoteDescription(desc);
-        }
-      } else if(message is RtcIceCandidateMessage) {
-        _pc.addIceCandidate(message.candidate, () {
-          
-        }, (error) {
-          print('Unable to add IceCandidateMessage: $error');
         });
       } else {
-        print('Unknown SignalingMessage: $message');
+        print('answer received');
+        _pc.setRemoteDescription(desc);
       }
-    });
+    } else if(message is RtcIceCandidateMessage) {
+      _pc.addIceCandidate(message.candidate, () {
+        
+      }, (error) {
+        print('Unable to add IceCandidateMessage: $error');
+      });
+    } else {
+      print('Unknown SignalingMessage: $message');
+    }
   }
   
   void initChannel(RtcDataChannel channel) {
@@ -58,12 +59,14 @@ class DualPeerConnection {
     });
     
     _channelMessageController.addStream(channel.onMessage);
+    
     /*
     channel.onMessage.listen((MessageEvent ev) {
       
       print('Channel.message: ${ev.data}');
     });
     */
+    
     channel.onClose.listen((Event ev) {
       print('Channel.close');
     });
@@ -83,7 +86,7 @@ class DualPeerConnection {
     // Send offer to the other peer
     _pc.createOffer({}).then((RtcSessionDescription desc) {
       _pc.setLocalDescription(desc).then((_) {
-        _signalingChannel.send(_pc.localDescription);
+        _signalingChannel.send({'rtc_session_description': _pc.localDescription});
       });
     }).catchError((err) {
       print('error at offer: $err');
@@ -94,7 +97,7 @@ class DualPeerConnection {
     if(ev.candidate != null) {
       RtcIceCandidate candidate = ev.candidate;
       print('${candidate.candidate} - ${candidate.sdpMid} - ${candidate.sdpMLineIndex}');
-      _signalingChannel.send(candidate);
+      _signalingChannel.send({'rtc_ice_candidate': candidate});
     } else {
       print('No more candidates');
     }

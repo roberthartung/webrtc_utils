@@ -8,9 +8,9 @@ class JsonSignalingTransformer implements SignalingChannelTransformer {
   dynamic serialize(Object o) {
     return JSON.encode(o, toEncodable: (dynamic o) {
       if(o is RtcSessionDescription) {
-        return {'rtc_session_description' : {'sdp' : o.sdp, 'type' : o.type}};
+        return {'sdp' : o.sdp, 'type' : o.type};
       } else if(o is RtcIceCandidate) {
-        return {'rtc_ice_candidate': {'candidate' : o.candidate, 'sdpMid' : o.sdpMid, 'sdpMLineIndex' : o.sdpMLineIndex}};
+        return {'candidate' : o.candidate, 'sdpMid' : o.sdpMid, 'sdpMLineIndex' : o.sdpMLineIndex};
       }
       
       throw 'Unable to JSON.encode $o';

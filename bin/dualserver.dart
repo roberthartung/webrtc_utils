@@ -1,7 +1,7 @@
 import 'package:webrtc_utils/signaling/server.dart';
 
 /**
- * Example Signaling Server
+ * Example Signaling Server for dual peering
  */
 
 void main() {
