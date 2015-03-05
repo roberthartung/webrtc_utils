@@ -25,7 +25,7 @@ The *DualPeerConnection* class will help you with establishing a connection betw
 
 #### Example
 
-```
+```dart
 import 'dart:html';
 import 'package:webrtc_utils/connections.dart';
 import 'package:webrtc_utils/signaling.dart';
