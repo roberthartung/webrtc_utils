@@ -1,0 +1,8 @@
+name: webrtc_utils
+version: 0.0.1
+author: Robert Hartung <r.hartung@roberthartung.de>
+description: A package that provides helpful classes when using WebRTC
+homepage: http://www.roberthartung.de
+environment:
+  sdk: any
+documentation: http://www.roberthartung.de
