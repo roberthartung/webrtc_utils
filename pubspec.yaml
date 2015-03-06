@@ -6,3 +6,5 @@ homepage: http://www.roberthartung.de
 environment:
   sdk: any
 documentation: http://www.roberthartung.de
+dependencies:
+  browser: any

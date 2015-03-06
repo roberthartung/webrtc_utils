@@ -3,7 +3,7 @@ import 'dart:html';
 import 'dart:convert';
 
 const Map rtcConfiguration = const {"iceServers": const [ const {"url": "stun:stun.l.google.com:19302"}]};
-final String url = 'ws://${window.location.hostname}:28081/test';
+final String url = 'ws://${window.location.hostname}:28080/test';
 
 /*
 abstract class Serializer {

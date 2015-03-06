@@ -5,5 +5,5 @@ import 'package:webrtc_utils/signaling/server.dart';
  */
 
 void main() {
-  new MultiPeerSignalingServer(28081);
+  new MultiPeerSignalingServer(28080);
 }
