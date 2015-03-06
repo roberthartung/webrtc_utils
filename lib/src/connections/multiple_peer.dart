@@ -15,8 +15,10 @@ class Peer {
   
   Peer(this._id, this._pc, this._signalingChannel);
   
+  /* Future<RtcDataChannel> */
   void createChannel(String label) {
-    _pc.onNegotiationNeeded.listen((Event ev) {
+    //Completer completer = new Completer();
+    _pc.onNegotiationNeeded.listen((Event ev) { 
       print('Connection.negotiationNeeded');
       // Send offer to the other peer
       _pc.createOffer({}).then((RtcSessionDescription desc) {
@@ -28,7 +30,29 @@ class Peer {
       });
     });
     RtcDataChannel channel = _pc.createDataChannel(label);
+    /*
+    channel.onOpen.listen((_) {
+      print('Channel opened');
+      completer.complete(channel);
+    });
+    */
     _initChannel(channel);
+    //return completer.future;
+  }
+  
+  void addStream(MediaStream ms, [Map<String,String> mediaConstraints]) {
+    print('[Peer] Add Stream');
+    _pc.addStream(ms, mediaConstraints);
+    _initStream(ms);
+  }
+  
+  void _initStream(MediaStream ms) {
+    print('[Peer] Stream received');
+    VideoElement video = new VideoElement();
+    video.src = Url.createObjectUrlFromStream(ms);
+    video.controls = true;
+    video.autoplay = true;
+    document.body.append(video);
   }
   
   void _initChannel(RtcDataChannel channel) {
@@ -47,11 +71,9 @@ class Peer {
       print('Channel.message: ${ev.data}');
     });
     */
-    
     channel.onClose.listen((Event ev) {
       print('Channel.close');
     });
-    
     channel.onError.listen((Event ev) {
       print('Channel.error');
     });
@@ -83,13 +105,16 @@ class MultiplePeerConnection {
       Peer peer = peers[message.source];
       RtcPeerConnection pc = peer._pc;
       
-      // RtcPeerConnection pc = peers[message.source];
-      
       if(signalingMessage is RtcSessionDescriptionMessage) {
         RtcSessionDescription desc = signalingMessage.description;
         if(desc.type == 'offer') {
           pc.onDataChannel.listen((RtcDataChannelEvent ev) {
+            print('Channel received');
             peer._initChannel(ev.channel);
+          });
+          
+          pc.onAddStream.listen((MediaStreamEvent ev) {
+            peer._initStream(ev.stream);
           });
           
           print('offer received');

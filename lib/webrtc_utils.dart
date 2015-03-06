@@ -1,6 +1,7 @@
 library webrtc_utils;
 
 export 'signaling.dart';
+export 'connections.dart';
 
 // OLD CODE
 

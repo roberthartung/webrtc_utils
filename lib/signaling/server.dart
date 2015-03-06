@@ -2,6 +2,7 @@ library webrtc_utils.signaling.server;
 
 import 'dart:io';
 import 'dart:convert';
+import 'dart:async';
 
 part '../src/signaling/server.dart';
 part '../src/signaling/server/room.dart';
