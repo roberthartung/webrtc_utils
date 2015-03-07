@@ -41,11 +41,77 @@ class MessageSerializer extends JsonSerializer {
 }
 */
 void main() {
+  final UListElement peerList = querySelector('#peers');
+  
   //new JsonSerializer();
   TargetedSignalingChannelTransformer transformer = new JsonTargetSignalingTransformer();
   TargetedSignalingChannel signalingChannel = new TargetedWebSocketSignalingChannel(url, transformer);
   MultiplePeerConnection m = new MultiplePeerConnection(rtcConfiguration, signalingChannel);
   m.onPeerConnected.listen((Peer peer) {
+    peerList.appendHtml('<li class="peer" id="peer-${peer.id}">Peer #${peer.id} - <button id="start-peer-${peer.id}">Start Camera</button></li>');
+    
+    LIElement li = querySelector('#peer-${peer.id}');
+    ButtonElement button = querySelector('#start-peer-${peer.id}');
+    
+    bool cameraConnected = false;
+    MediaStream camera;
+    
+    peer.onAddStream.listen((MediaStreamEvent ev) {
+      // TODO(rh): It looks like it is not possible to receive the own stream.
+      if(ev.stream == camera) {
+        print('Own camera stream added.');
+        return;
+      }
+      MediaStream ms = ev.stream;
+      
+      String url = Url.createObjectUrlFromStream(ms);
+      document.body.appendHtml('<div id="camera-peer-${peer.id}"><p>Stream for Peer #${peer.id}</p><video controls autoplay src="${url}"></video></div>');
+      print('[Peer] Stream received (${url}) (${ms}) (${ms.ended})');
+    });
+    
+    peer.onRemoveStream.listen((MediaStreamEvent ev) {
+      // TODO(rh): It looks like it is not possible to receive the own stream.
+      if(ev.stream == camera) {
+        print('Own camera stream removed.');
+        return;
+      }
+      print('Camera removed.');
+      querySelector('#camera-peer-${peer.id}').remove();
+    });
+    
+    button.onClick.listen((MouseEvent ev) {
+      print('Button clicked');
+      if(cameraConnected) {
+        print('Camera connected: Now stopping');
+        camera.stop();
+        button.text = 'Start Camera';
+        peer.removeStream(camera);
+        querySelector('#preview').remove();
+      } else {
+        print('Camera not connected: Now starting');
+        button.text = 'Stop Camera';
+        // TODO(rh): It looks like the stream does not start, until it is played LOCALLY!
+        // TODO(rh): Maybe it's not the local playback but the internet/network connection that keeps the stream from playing
+        window.navigator.getUserMedia(video: true).then((MediaStream ms) {
+          camera = ms;
+          peer.addStream(ms);
+          VideoElement preview = new VideoElement();
+          preview.id = 'preview';
+          preview.src = Url.createObjectUrlFromStream(ms);
+          preview.controls = true;
+          preview.autoplay = true;
+          document.body.append(preview);
+        });
+        
+        /*
+        if(m.localPeerId < peer.id) {
+          peer.createChannel('test');
+        }
+        */
+      }
+      cameraConnected = !cameraConnected;
+    });
+    
     print('Peer connected: ${peer.id}');
     peer.onChannelCreated.listen((RtcDataChannel channel) {
       channel.onMessage.listen((MessageEvent ev) {
@@ -56,14 +122,5 @@ void main() {
         channel.send('Hello from ${m.localPeerId}');
       });
     });
-    
-    if(m.localPeerId < peer.id) {
-      // Only create Channel if we got the lower ID
-      window.navigator.getUserMedia(video: true).then((MediaStream stream) {
-        print('Add stream');
-        peer.addStream(stream);
-        peer.createChannel('test');
-      });
-    }
   });
 }

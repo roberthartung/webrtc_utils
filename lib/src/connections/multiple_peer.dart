@@ -9,15 +9,15 @@ class Peer {
   
   int get id => _id;
   
+  Stream<MediaStreamEvent> get onAddStream => _pc.onAddStream;
+  
+  Stream<MediaStreamEvent> get onRemoveStream => _pc.onRemoveStream;
+  
   StreamController<RtcDataChannel> _onChannelCreatedController = new StreamController.broadcast();
   
   Stream<RtcDataChannel> get onChannelCreated => _onChannelCreatedController.stream;
   
-  Peer(this._id, this._pc, this._signalingChannel);
-  
-  /* Future<RtcDataChannel> */
-  void createChannel(String label) {
-    //Completer completer = new Completer();
+  Peer(this._id, this._pc, this._signalingChannel) {
     _pc.onNegotiationNeeded.listen((Event ev) { 
       print('Connection.negotiationNeeded');
       // Send offer to the other peer
@@ -29,6 +29,11 @@ class Peer {
         print('error at offer: $err');
       });
     });
+  }
+  
+  /* Future<RtcDataChannel> */
+  void createChannel(String label) {
+    //Completer completer = new Completer();
     RtcDataChannel channel = _pc.createDataChannel(label);
     /*
     channel.onOpen.listen((_) {
@@ -40,19 +45,23 @@ class Peer {
     //return completer.future;
   }
   
+  /**
+   * Adds a stream to this Peer (e.g. Webcam)
+   */
+  
   void addStream(MediaStream ms, [Map<String,String> mediaConstraints]) {
     print('[Peer] Add Stream');
-    _pc.addStream(ms, mediaConstraints);
-    _initStream(ms);
+    // mediaConstraints
+    _pc.addStream(ms);
   }
   
-  void _initStream(MediaStream ms) {
-    print('[Peer] Stream received');
-    VideoElement video = new VideoElement();
-    video.src = Url.createObjectUrlFromStream(ms);
-    video.controls = true;
-    video.autoplay = true;
-    document.body.append(video);
+  /**
+   * Removes a stream from this Peer
+   */
+  
+  void removeStream(MediaStream ms) {
+    _pc.removeStream(ms);
+    // TODO(rh): Remove Stream / VideoElement!
   }
   
   void _initChannel(RtcDataChannel channel) {
@@ -111,10 +120,6 @@ class MultiplePeerConnection {
           pc.onDataChannel.listen((RtcDataChannelEvent ev) {
             print('Channel received');
             peer._initChannel(ev.channel);
-          });
-          
-          pc.onAddStream.listen((MediaStreamEvent ev) {
-            peer._initStream(ev.stream);
           });
           
           print('offer received');
