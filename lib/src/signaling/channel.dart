@@ -5,9 +5,16 @@ part of webrtc_utils.signaling;
  */
 
 abstract class SignalingMessage {
+  // TODO(rh): or name it source?
+  final int _sender;
   
+  SignalingMessage(this._sender);
+  
+  SignalingMessage.fromObject(Map data) : _sender = data['sender'];
+  
+  int get sender => _sender;
 }
-
+/*
 class RtcIceCandidateMessage extends SignalingMessage {
   final RtcIceCandidate candidate;
   RtcIceCandidateMessage(this.candidate);
@@ -17,7 +24,7 @@ class RtcSessionDescriptionMessage extends SignalingMessage {
   final RtcSessionDescription description;
   RtcSessionDescriptionMessage(this.description);
 }
-
+*/
 class TargetedSignalingMessage {
   final Map data;
   final int source;

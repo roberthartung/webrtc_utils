@@ -1,9 +1,12 @@
 part of webrtc_utils.signaling;
 
-class IceCandidateMessage {
-  final clientId;
-  
+/**
+ * Ice Candidate message
+ */
+
+class IceCandidateMessage extends SignalingMessage {
+  // final clientId;
   final RtcIceCandidate candidate;
-  
-  IceCandidateMessage._fromObject(Map message) : clientId = message['client']['source']['id'], candidate = new RtcIceCandidate(message['candidate']);
+  //  clientId = message['client']['source']['id']
+  IceCandidateMessage._fromObject(Map message) : super.fromObject(message), candidate = new RtcIceCandidate(message['candidate']);
 }

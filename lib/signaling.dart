@@ -1,3 +1,7 @@
+/**
+ * This library contains stuff 
+ */
+
 library webrtc_utils.signaling;
 
 // WebSocket

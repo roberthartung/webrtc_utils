@@ -1,6 +1,8 @@
 part of webrtc_utils.signaling;
 
-class SessionDescriptionMessage {
+
+
+class SessionDescriptionMessage extends SignalingMessage {
   final clientId;
 
   final RtcSessionDescription description;
