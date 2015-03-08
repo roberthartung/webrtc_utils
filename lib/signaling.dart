@@ -4,25 +4,33 @@
 
 library webrtc_utils.signaling;
 
-// WebSocket
+// Rtc*
 import 'dart:html';
 
-// JSON
-import 'dart:convert';
-
-// Streams
-import 'dart:async';
-
-// Converts messages from and to json
-part 'src/signaling/transformer/json.dart';
-part 'src/signaling/transformer/json_target.dart';
-part 'src/signaling/channel.dart';
-part 'src/signaling/channel/websocket.dart';
-
-// Basic Handler class
-// part 'src/signaling/handler.dart';
-// (Demo) Implementation of a signaling handler that uses a WebSocket + JSON
-// part 'src/signaling/handlers/websocket_json.dart';
-//part 'src/signaling/messages/welcome.dart';
 part 'src/signaling/messages/icecandidate.dart';
-part 'src/signaling/messages/session_description.dart';
+part 'src/signaling/messages/sessiondescription.dart';
+part 'src/signaling/messages/joinroom.dart';
+part 'src/signaling/messages/welcome.dart';
+part 'src/signaling/messages/room.dart';
+part 'src/signaling/messages/peer.dart';
+
+/**
+ * A signaling message that is transferred between peers
+ */
+
+abstract class SignalingMessage {
+  String get type;
+  
+  // TODO(rh): Should we name it source?
+  final int _peerId;
+  
+  int get peerId => _peerId;
+  
+  SignalingMessage(this._peerId);
+  
+  SignalingMessage.fromObject(Map data) : _peerId = data['peer']['id'];
+  
+  Object toObject() {
+    return {'type': type, 'peer': {'id': peerId}};
+  }
+}

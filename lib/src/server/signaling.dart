@@ -1,4 +1,12 @@
-part of webrtc_utils.signaling.server;
+/**
+ * An Example implementation of a signaling server
+ * 
+ * We are using a HttpServer and upgrade them to WebSockets
+ * 
+ * As a transfport protocol we use JSON
+ */
+
+part of webrtc_utils.server;
 
 const String PROTOCOL = 'webrtc_signaling';
 
@@ -7,11 +15,11 @@ class SignalingServer {
   
   Map<String, Room> rooms = {};
   
+  Map<int, Peer> peers = {};
+  
   String _protocol;
   
-  SignalingServer([String this._protocol = PROTOCOL]) {
-    
-  }
+  SignalingServer([String this._protocol = PROTOCOL]);
   
   /**
    * Make sure the client sends the right protocol
@@ -43,8 +51,31 @@ class SignalingServer {
     
     // Create Peer
     Peer peer = new Peer(_id++, ws);
+    peers[peer.id] = peer;
+    // Send initial welcome message
+    peer.send({'type': 'welcome', 'peer': {'id': peer.id}});
     
+    // TODO(rh): Create streams in Peer
     
+    peer._ws.map((_) => JSON.decode(_)).listen((Map m) {
+      print('Message from Peer#${peer.id}: $m');
+      switch(m['type']) {
+        case 'join_room' :
+          _joinRoom(peer, m);
+          break;
+        case "rtc_session_description" :
+        case "rtc_ice_candidate" :
+          // TODO(rh): How to prevent the peer from sending wrong peer IDs
+          int targetPeerId = m['peer']['id'];
+          // When sending the peer, it is the source 
+          m['peer']['id'] = peer.id;
+          peers[targetPeerId].send(m);
+          break;
+        default :
+          print("Unknown message received!");
+          break;
+      }
+    });
     
     /*
     ws.done.then((_) {
@@ -55,7 +86,7 @@ class SignalingServer {
     });
     
     // Make sure the room exists
-    // Room room = rooms.putIfAbsent(roomName, () => new Room(roomName));
+    // 
     
     // Send current peers in the room to the peer
     peer.send({'peers': room.peers.keys.toList()});
@@ -73,6 +104,18 @@ class SignalingServer {
     });
     _onPeerConnected(room, peer);
     */
+  }
+  
+  void _joinRoom(Peer peer, Map m) {
+    Room room = rooms.putIfAbsent(m['room'], () => new Room(m['room']));
+    // Send room message with a list of current peers to the peer
+    // id=null is a hack
+    peer.send({'type': 'room', 'name': room.name, 'peers': room.peers.keys.toList(), 'peer': {'id': peer.id}});
+    final Map message = {'type': 'peer', 'room': room.name, 'peer': {'id': peer.id}};
+    room.peers.values.forEach((Peer otherPeer) {
+      otherPeer.send(message);
+    });
+    room.peers[peer.id] = peer;
   }
   
   void _onPeerConnected(Room room, Peer peer) {

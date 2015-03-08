@@ -1,52 +1,66 @@
-import 'package:webrtc_utils/webrtc_utils.dart';
+import 'package:webrtc_utils/client.dart';
 import 'dart:html';
-import 'dart:convert';
 
 const Map rtcConfiguration = const {"iceServers": const [ const {"url": "stun:stun.l.google.com:19302"}]};
 final String url = 'ws://${window.location.hostname}:28080/test';
+P2PClient client;
 
-/*
-abstract class Serializer {
-  dynamic serialize(dynamic o);
-  dynamic unserialize(dynamic o);
+void _onAddStream(Peer peer, MediaStream ms) {
+  print('Stream added from Peer#${peer.id}: $ms');
+  VideoElement video = new VideoElement();
+  video.autoplay = true;
+  video.controls = true;
+  video.src = Url.createObjectUrlFromStream(ms);
+  document.body.append(video);
 }
 
-class JsonSerializer implements Serializer {
-  dynamic _toEncodable(dynamic o) {
-    throw "Unable to encode $o";
-  }
-  
-  dynamic _reviver(dynamic k, dynamic v) {
-    return v; 
-  }
-  
-  String serialize(Object o) {
-    return JSON.encode(o, toEncodable: _toEncodable);
-  }
-  
-  Object unserialize(String o) {
-    return JSON.decode(o, reviver: _reviver);
-  }
+void _onPeerAdded(Peer peer) {
+  peer.onAddStream.listen((MediaStreamEvent ev) => _onAddStream(peer, ev.stream));
+  peer.onChannelCreated.listen(_setupChannel);
 }
 
-class MessageSerializer extends JsonSerializer {
-  dynamic serialize(SignalingMessage m) {
-    // Convert message to Map (Object)
-    return super.serialize(m);
-  }
-  
-  dynamic unserialize(dynamic o) {
-    return super.unserialize(o);
-  }
+void _setupChannel(RtcDataChannel channel) {
+  print('Channel created');
+  channel.onOpen.listen((_) {
+    print('Channel opened');
+    channel.send('Hello from ${client.id}');
+  });
+  channel.onMessage.listen((MessageEvent ev) {
+    print('Message in Channel ${channel.label}: ${ev.data}');
+  });
 }
-*/
+
 void main() {
   final UListElement peerList = querySelector('#peers');
+  client = new WebSocketP2PClient(url, rtcConfiguration);
   
+  client.onConnected.listen((final int id) {
+    print('Now connected to the server with id $id');
+    // After we're connect and got our ID, we can now join rooms
+    client.join('demo');
+  });
+  
+  client.onRoomJoined.listen((final Room room) {
+    print('I joined Room ${room.name} with peers ${room.peers}');
+    
+    // Loop through existing peers
+    room.peers.forEach(_onPeerAdded);
+    
+    room.onPeerJoined.listen((Peer peer) {
+      print('A peer joined room ${room.name}');
+      _onPeerAdded(peer);
+      // When some joins, when we're already in the room: Initialize Communication
+      print('Creating channel "chat".');
+      peer.createChannel('chat');
+      // Get webcam stream
+      window.navigator.getUserMedia(video: true).then((MediaStream ms) {
+        peer.addStream(ms);
+      });
+    });
+  });
+  
+  /*
   //new JsonSerializer();
-  TargetedSignalingChannelTransformer transformer = new JsonTargetSignalingTransformer();
-  TargetedSignalingChannel signalingChannel = new TargetedWebSocketSignalingChannel(url, transformer);
-  MultiplePeerConnection m = new MultiplePeerConnection(rtcConfiguration, signalingChannel);
   m.onPeerConnected.listen((Peer peer) {
     peerList.appendHtml('<li class="peer" id="peer-${peer.id}">Peer #${peer.id} - <button id="start-peer-${peer.id}">Start Camera</button></li>');
     
@@ -123,4 +137,5 @@ void main() {
       });
     });
   });
+  */
 }
