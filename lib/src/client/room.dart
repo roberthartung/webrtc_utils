@@ -7,9 +7,11 @@ part of webrtc_utils.client;
 class Room {
   final String name;
   
-  StreamController<Peer> _onPeerJoinedController = new StreamController();
-    
-  Stream<Peer> get onPeerJoined => _onPeerJoinedController.stream;
+  StreamController<Peer> _onJoinController = new StreamController();
+  Stream<Peer> get onJoin => _onJoinController.stream;
+  
+  StreamController<Peer> _onLeaveController = new StreamController();
+  Stream<Peer> get onLeave => _onLeaveController.stream;
   
   final List<Peer> _peers = [];
   
@@ -19,6 +21,11 @@ class Room {
   
   void _addPeer(Peer peer) {
     _peers.add(peer);
-    _onPeerJoinedController.add(peer);
+    _onJoinController.add(peer);
+  }
+  
+  void _removePeer(Peer peer) {
+    _peers.remove(peer);
+    _onLeaveController.add(peer);
   }
 }

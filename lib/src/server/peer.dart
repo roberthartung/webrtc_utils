@@ -14,4 +14,6 @@ class Peer {
   void send(Object o) {
     _ws.add(JSON.encode(o));
   }
+  
+  String toString() => 'Peer#$id';
 }

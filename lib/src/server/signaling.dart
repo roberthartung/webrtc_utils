@@ -55,10 +55,8 @@ class SignalingServer {
     // Send initial welcome message
     peer.send({'type': 'welcome', 'peer': {'id': peer.id}});
     
-    // TODO(rh): Create streams in Peer
-    
     peer._ws.map((_) => JSON.decode(_)).listen((Map m) {
-      print('Message from Peer#${peer.id}: $m');
+      //print('Message from Peer#${peer.id}: $m');
       switch(m['type']) {
         case 'join_room' :
           _joinRoom(peer, m);
@@ -77,45 +75,40 @@ class SignalingServer {
       }
     });
     
-    /*
     ws.done.then((_) {
-      room.peers.remove(peer.id);
-      room.peers.forEach((int peerId, Peer otherPeer) {
-        otherPeer.send({'leave': {'peer': {'id': peer.id}}});
+      peer.rooms.forEach((Room room) {
+        print('Peer $peer left $room');
+        room.peers.remove(peer);
+        peers.remove(peer.id);
+        final Map message = {'type': 'leave', 'room': room.name, 'peer': {'id': peer.id}};
+        // Send LeaveMessage to all remaining clients
+        room.peers.values.forEach((Peer otherPeer) {
+          otherPeer.send(message);
+        });
+        // Remove room if there are no more peers
+        if(room.peers.length == 0) {
+          print('Room $room is empty. Removing.');
+          rooms.remove(room.name);
+        }
       });
     });
-    
-    // Make sure the room exists
-    // 
-    
-    // Send current peers in the room to the peer
-    peer.send({'peers': room.peers.keys.toList()});
-    // Send new peer to others
-    room.peers.forEach((int peerId, Peer otherPeer) {
-      otherPeer.send({'join': {'peer': {'id': peer.id}}});
-    });
-    // Add Peer to room (make sure this is at the end!) so we don't then the peer to itself.
-    room.addPeer(peer);
-    
-    peer.messages.first.then((Object o) {
-      if(o is Map) {
-        
-      }
-    });
-    _onPeerConnected(room, peer);
-    */
   }
+  
+  /**
+   * Handle join request from a peer
+   */
   
   void _joinRoom(Peer peer, Map m) {
     Room room = rooms.putIfAbsent(m['room'], () => new Room(m['room']));
     // Send room message with a list of current peers to the peer
     // id=null is a hack
     peer.send({'type': 'room', 'name': room.name, 'peers': room.peers.keys.toList(), 'peer': {'id': peer.id}});
-    final Map message = {'type': 'peer', 'room': room.name, 'peer': {'id': peer.id}};
+    final Map message = {'type': 'join', 'room': room.name, 'peer': {'id': peer.id}};
     room.peers.values.forEach((Peer otherPeer) {
       otherPeer.send(message);
     });
     room.peers[peer.id] = peer;
+    peer.rooms.add(room);
   }
   
   void _onPeerConnected(Room room, Peer peer) {

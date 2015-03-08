@@ -15,8 +15,10 @@ class MessageConverter extends JsonConverter {
       return new WelcomeMessage.fromObject(m);
     } else if(m['type'] == RoomMessage.TYPE) {
       return new RoomMessage.fromObject(m);
-    } else if(m['type'] == PeerMessage.TYPE) {
-      return new PeerMessage.fromObject(m);
+    } else if(m['type'] == JoinMessage.TYPE) {
+      return new JoinMessage.fromObject(m);
+    } else if(m['type'] == LeaveMessage.TYPE) {
+      return new LeaveMessage.fromObject(m);
     }
     
     throw "Unable to decode string '$s'.";

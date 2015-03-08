@@ -46,8 +46,12 @@ void main() {
     // Loop through existing peers
     room.peers.forEach(_onPeerAdded);
     
-    room.onPeerJoined.listen((Peer peer) {
-      print('A peer joined room ${room.name}');
+    room.onLeave.listen((Peer peer) {
+      print('Peer $peer left room ${room.name}');
+    });
+    
+    room.onJoin.listen((Peer peer) {
+      print('Peer $peer joined room ${room.name}');
       _onPeerAdded(peer);
       // When some joins, when we're already in the room: Initialize Communication
       print('Creating channel "chat".');

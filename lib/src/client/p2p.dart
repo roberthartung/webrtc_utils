@@ -33,50 +33,6 @@ abstract class P2PClient {
     _signalingChannel.send(new JoinRoomMessage(room, _id));
   }
   
-  /*
-  if(message.message != null) {
-      SignalingMessage signalingMessage = message.message;
-      print('SignalingMessage: $signalingMessage from ${message.source}');
-      
-      if(signalingMessage is RtcSessionDescriptionMessage) {
-        
-        return;
-      } else if(signalingMessage is RtcIceCandidateMessage) {
-        pc.addIceCandidate(signalingMessage.candidate, () {
-          
-        }, (error) {
-          print('Unable to add IceCandidateMessage: $error');
-        });
-        return;
-      }
-    } else if(message.data != null) {
-      int peerId = message.source;
-      if(_signalingChannel.source == null) {
-        _signalingChannel.source = peerId;
-        print('Received local peer id: ${_signalingChannel.source}');
-        return;
-      } else {
-        print('New Peer ID received: $peerId');
-        
-        RtcPeerConnection pc = new RtcPeerConnection(_rtcConfiguration);
-        pc.onIceCandidate.listen((RtcIceCandidateEvent ev) {
-          if(ev.candidate != null) {
-            _signalingChannel.send({'rtc_ice_candidate': ev.candidate}, peerId);
-          } else {
-            print('No more candidates');
-          }
-        });
-        Peer peer = new Peer(peerId, pc, _signalingChannel);
-        peers[peerId] = peer;
-        _onPeerConnectedController.add(peer);
-        return;
-      }
-
-      // print('Raw message received: ${message.source}');
-      return;
-    }
-  */
-  
   void _onSignalingMessage(SignalingMessage sm) {
     // Get Peer and PeerConnection from SignalMessage's peerId
     if(sm is WelcomeMessage) {
@@ -90,30 +46,35 @@ abstract class P2PClient {
       // TODO(rh): We should create an event for the initial peer list.
       sm.peers.forEach((int peerId) {
         Peer peer = new Peer._(room, peerId, _signalingChannel, _rtcConfiguration);
-        print('Peer $peer created');
         room._peers.add(peer);
         peers[peer.id] = peer;
       });
       _onRoomJoinedController.add(room);
       return;
-    } else if(sm is PeerMessage) {
+    } else if(sm is JoinMessage) {
       // A peer joined a room
       Room room = rooms[sm.room];
       Peer peer = new Peer._(room, sm.peerId, _signalingChannel, _rtcConfiguration);
-      print('Peer $peer created');
       peers[peer.id] = peer;
       room._addPeer(peer);
+      return;
+    } else if(sm is LeaveMessage) {
+      // A peer left a room
+      Room room = rooms[sm.room];
+      Peer peer = peers[sm.peerId];
+      room._removePeer(peer);
+      peers.remove(sm.peerId);
       return;
     }
     
     final Peer peer = peers[sm.peerId];
     final RtcPeerConnection pc = peer._pc;
     
-    print('[P2P._onSignalingMessage:$peer] SignalingMessage $sm received.');
+    // print('[P2P._onSignalingMessage:$peer] SignalingMessage $sm received.');
     if(sm is SessionDescriptionMessage) {
       RtcSessionDescription desc = sm.description;
       if(desc.type == 'offer') {
-        print('offer received');
+        //print('offer received');
         pc.setRemoteDescription(desc).then((_) {
           pc.createAnswer().then((RtcSessionDescription answer) {
             pc.setLocalDescription(answer).then((_) {
@@ -123,12 +84,12 @@ abstract class P2PClient {
           });
         });
       } else {
-        print('answer received');
+        //print('answer received');
         pc.setRemoteDescription(desc);
       }
     } else if(sm is IceCandidateMessage) {
       pc.addIceCandidate(sm.candidate, () {
-        print('Candidate ${sm.candidate.candidate} added');
+        //print('Candidate ${sm.candidate.candidate} added');
       }, (error) {
         print('Unable to add IceCandidateMessage: $error');
       });
