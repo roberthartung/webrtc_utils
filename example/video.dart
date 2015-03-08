@@ -2,7 +2,7 @@ import 'package:webrtc_utils/client.dart';
 import 'dart:html';
 
 const Map rtcConfiguration = const {"iceServers": const [ const {"url": "stun:stun.l.google.com:19302"}]};
-final String url = 'ws://${window.location.hostname}:28080/test';
+final String url = 'ws://${window.location.hostname}:28080';
 P2PClient client;
 
 void _onAddStream(Peer peer, MediaStream ms) {
