@@ -56,13 +56,13 @@ class SignalingServer {
     peer.send({'type': 'welcome', 'peer': {'id': peer.id}});
     
     peer._ws.map((_) => JSON.decode(_)).listen((Map m) {
-      //print('Message from Peer#${peer.id}: $m');
       switch(m['type']) {
         case 'join_room' :
           _joinRoom(peer, m);
           break;
         case "rtc_session_description" :
         case "rtc_ice_candidate" :
+          print('Message from Peer#${peer.id}: $m');
           // TODO(rh): How to prevent the peer from sending wrong peer IDs
           int targetPeerId = m['peer']['id'];
           // When sending the peer, it is the source 
@@ -101,7 +101,7 @@ class SignalingServer {
   void _joinRoom(Peer peer, Map m) {
     Room room = rooms.putIfAbsent(m['room'], () => new Room(m['room']));
     // Send room message with a list of current peers to the peer
-    // id=null is a hack
+    print('Peer $peer join Room ${room.name}');
     peer.send({'type': 'room', 'name': room.name, 'peers': room.peers.keys.toList(), 'peer': {'id': peer.id}});
     final Map message = {'type': 'join', 'room': room.name, 'peer': {'id': peer.id}};
     room.peers.values.forEach((Peer otherPeer) {
@@ -109,10 +109,6 @@ class SignalingServer {
     });
     room.peers[peer.id] = peer;
     peer.rooms.add(room);
-  }
-  
-  void _onPeerConnected(Room room, Peer peer) {
-    // peer.messages.listen();
   }
   
   /**

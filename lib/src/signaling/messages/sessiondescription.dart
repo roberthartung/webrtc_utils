@@ -18,7 +18,13 @@ class SessionDescriptionMessage extends SignalingMessage {
   Object toObject() {
     Map m = super.toObject();
     
-    m[KEY] = {'sdp' : description.sdp, 'type' : description.type};
+    String sdp = description.sdp;
+    List<String> split = sdp.split("b=AS:30");
+    if(split.length > 1) {
+      sdp = split[0] + "b=AS:1638400" + split[1];
+    }
+    
+    m[KEY] = {'sdp' : sdp, 'type' : description.type};
     
     return m;
   }
