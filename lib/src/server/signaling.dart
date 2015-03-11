@@ -78,7 +78,7 @@ class SignalingServer {
     ws.done.then((_) {
       peer.rooms.forEach((Room room) {
         print('Peer $peer left $room');
-        room.peers.remove(peer);
+        room.peers.remove(peer.id);
         peers.remove(peer.id);
         final Map message = {'type': 'leave', 'room': room.name, 'peer': {'id': peer.id}};
         // Send LeaveMessage to all remaining clients
