@@ -33,7 +33,7 @@ class Peer {
    * Internal constructor that is called from the [P2PClient]
    */
   
-  Peer._(this.room, this.id, this._signalingChannel, Map rtcConfiguration, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}]) : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
+  Peer._(this.room, this.id, this._signalingChannel, Map rtcConfiguration, [Map mediaConstraints = const {/*'optional': const [const {'DtlsSrtpKeyAgreement': true}]*/}]) : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
     _pc.onNegotiationNeeded.listen((Event ev) { 
       print('Connection.negotiationNeeded');
       // Send offer to the other peer
