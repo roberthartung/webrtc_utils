@@ -9,34 +9,50 @@ final String url = 'ws://${window.location.hostname}:28080';
 P2PClient client;
 Map<String, File> files = {};
 void _onPeerJoined(Peer peer) {
-  peer.onChannelCreated.listen((final RtcDataChannel channel) {
-    print('Channel created with label ${channel.label}');
+  // TODO(rh): It looks like we cannot open another RtcDataChannel when the old one is still open
+  peer.onChannelCreated.listen((RtcDataChannel channel) {
+    print('Channel created with label ${channel.label} and id ${channel.id}');
     channel.binaryType = 'arraybuffer';
+    
+    channel.onClose.listen((Event ev) {
+      print('Channel ${channel.label} closed');
+    });
+          
+    channel.onError.listen((Event ev) {
+      print('Channel ${channel.label} error: ${channel.readyState}');
+    });
+    
+    print('Channel.readyState = ${channel.readyState}');
+    Timer stateTimer = new Timer.periodic(new Duration(seconds: 1), (Timer t) {
+      print('Channel.readyState = ${channel.readyState}');
+    });
     
     if(files.containsKey(channel.label)) {
       print('Sender');
       
       channel.onOpen.listen((Event ev) {
-        print('Channel is opened');
+        stateTimer.cancel();
+        print('Channel opened');
         final File file = files[channel.label];
         final int startTime = new DateTime.now().millisecondsSinceEpoch;
         
         print('File to send: ${file.name} ${file.size}');
         
         var chunkSize = 16384;
-        sliceFile(final int offset) {
-          final FileReader reader = new FileReader();
+        sliceFile(int offset) {
+          FileReader reader = new FileReader();
           reader.onLoadEnd.listen((Event ev) {
-            print('bytes in buffer (before): ${channel.bufferedAmount}');
+            //print('bytes in buffer (before): ${channel.bufferedAmount}');
             channel.send(reader.result);
-            print('bytes in buffer (after): ${channel.bufferedAmount}');
+            //print('bytes in buffer (after): ${channel.bufferedAmount}');
             if (file.size > offset + (reader.result as TypedData).lengthInBytes) {
               // new Future(() => sliceFile(offset + chunkSize));
               // 0 Delay sending
               sliceFile(offset + chunkSize);
             } else {
-              final int time = new DateTime.now().millisecondsSinceEpoch - startTime;
+              int time = new DateTime.now().millisecondsSinceEpoch - startTime;
               print('Sending done after ${time}ms');
+              channel.send('done');
             }
           });
           Blob slice = file.slice(offset, offset + chunkSize);
@@ -48,21 +64,29 @@ void _onPeerJoined(Peer peer) {
       });
       
       channel.onMessage.listen((MessageEvent ev) {
+        if(ev.data == 'done') {
+          channel.close();
+        }
         print(ev.data);
       });
     } else {
-      final int startTime = new DateTime.now().millisecondsSinceEpoch;
-      
-      
+      int startTime = new DateTime.now().millisecondsSinceEpoch;
       print('Receiver');
       List receiveBuffer = [];
+      
+      channel.onOpen.listen((Event ev) {
+        stateTimer.cancel();
+        print('Channel opened');
+        channel.send('hello');
+      });
+      
       channel.onMessage.listen((MessageEvent ev) {
         if(ev.data is ByteBuffer) {
           ByteBuffer buffer = ev.data;
           receiveBuffer.add(ev.data);
-          
+          print('Chunk received: ${buffer.lengthInBytes}');
           if(buffer.lengthInBytes < 16384) {
-            final int time = new DateTime.now().millisecondsSinceEpoch - startTime;
+            int time = new DateTime.now().millisecondsSinceEpoch - startTime;
             print('Receiving done after ${time}ms');
             AnchorElement save = new AnchorElement();
             save.target = '_blank';
@@ -74,6 +98,11 @@ void _onPeerJoined(Peer peer) {
           }
         } else {
           print(ev.data);
+          if(ev.data == 'done') {
+            print('Closing channel due to done message.');
+            channel.send('send');
+            channel.close();
+          }
         }
       });
     }
@@ -83,6 +112,7 @@ void _onPeerJoined(Peer peer) {
 void main() {
   client = new WebSocketP2PClient(url, rtcConfiguration);
   client.onConnected.listen((final int id) {
+    print('Local ID: $id');
     client.join('filetransfer');
   });
   
@@ -91,6 +121,7 @@ void main() {
     room.onJoin.listen(_onPeerJoined);
     
     document.onDragEnter.listen((MouseEvent ev) {
+      
     });
     
     document.onDragLeave.listen((MouseEvent ev) {
@@ -117,8 +148,8 @@ void main() {
       if(ev.dataTransfer.files.length > 0) {
         ev.dataTransfer.files.forEach((File file) {
           room.peers.forEach((Peer peer) {
-            peer.createChannel(file.name, {'ordered': true, 'reliable': true});
             files[file.name] = file;
+            peer.createChannel(file.name, {'ordered': true, 'reliable': true});
           });
         });
       }
