@@ -62,7 +62,7 @@ class SignalingServer {
           break;
         case "rtc_session_description" :
         case "rtc_ice_candidate" :
-          print('Message from Peer#${peer.id}: $m');
+          // print('Message from Peer#${peer.id}: $m');
           // TODO(rh): How to prevent the peer from sending wrong peer IDs
           int targetPeerId = m['peer']['id'];
           // When sending the peer, it is the source 

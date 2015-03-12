@@ -91,7 +91,7 @@ abstract class P2PClient {
       pc.addIceCandidate(sm.candidate, () {
         //print('Candidate ${sm.candidate.candidate} added');
       }, (error) {
-        print('Unable to add IceCandidateMessage: $error');
+        print('[ERROR] Unable to add IceCandidateMessage: $error');
       });
     } else {
       throw "Unknown SignalingMessage received: $sm.";

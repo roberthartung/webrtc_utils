@@ -29,11 +29,13 @@ class Peer {
   Stream<RtcDataChannel> get onChannelCreated => _onChannelCreatedController.stream;
   StreamController<RtcDataChannel> _onChannelCreatedController = new StreamController.broadcast();
   
+  // int _channelId = 1;
+  
   /**
    * Internal constructor that is called from the [P2PClient]
    */
   
-  Peer._(this.room, this.id, this._signalingChannel, Map rtcConfiguration, [Map mediaConstraints = const {/*'optional': const [const {'DtlsSrtpKeyAgreement': true}]*/}]) : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
+  Peer._(this.room, this.id, this._signalingChannel, Map rtcConfiguration, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}]) : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
     _pc.onNegotiationNeeded.listen((Event ev) { 
       print('Connection.negotiationNeeded');
       // Send offer to the other peer
@@ -53,16 +55,34 @@ class Peer {
     });
     
     _pc.onDataChannel.listen((RtcDataChannelEvent ev) {
+      //print('[$this.EVENT:onDataChannel] ${ev.channel}');
       _onChannelCreatedController.add(ev.channel);
     });
+    
+    /*
+    _pc.onSignalingStateChange.listen((Event ev) {
+      print('[Event] SignalingStateChange: ${_pc.signalingState}');
+    });
+    
+    _pc.onIceConnectionStateChange.listen((Event ev) {
+      print('[Event] IceConnectionStateChange: ${_pc.iceConnectionState} (${_pc.iceGatheringState})');
+    });
+    */
   }
   
   /**
    * Create a new RtcDataChannel with a given label
    */
   
-  void createChannel(String label, [Map options]) {
+  void createChannel(String label, [Map options = null]) {
+    // id is an unsigned unsigned short
+    /*
+    if(options == null) {
+      options = {'id': _channelId++};
+    }
+    */
     RtcDataChannel channel = _pc.createDataChannel(label, options);
+    print('[$this] Channel created: ${channel.label}');
     _onChannelCreatedController.add(channel);
   }
   
