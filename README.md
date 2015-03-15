@@ -44,8 +44,16 @@ There are a lot of examples included with the package. Just browse them and see 
 ### P2PClient
 
 ```dart
-const Map rtcConfiguration = const {"iceServers": const [ const {"url": "stun:stun.l.google.com:19302"}]};
-P2PClient client = new WebSocketP2PClient('ws://${window.location.hostname}:28080', rtcConfiguration);
+const Map rtcConfiguration = const {"iceServers":
+    const [
+      const {"url": "stun:stun.l.google.com:19302"}
+    ]
+  };
+
+P2PClient client = new WebSocketP2PClient(
+    'ws://${window.location.hostname}:28080',
+    rtcConfiguration
+  );
 
 client.onConnect.listen((_) {
   client.join('room');
