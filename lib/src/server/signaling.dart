@@ -62,12 +62,15 @@ class SignalingServer {
           break;
         case "rtc_session_description" :
         case "rtc_ice_candidate" :
-          // print('Message from Peer#${peer.id}: $m');
-          // TODO(rh): How to prevent the peer from sending wrong peer IDs
+          // Get target from message (map)
           int targetPeerId = m['peer']['id'];
-          // When sending the peer, it is the source 
-          m['peer']['id'] = peer.id;
-          peers[targetPeerId].send(m);
+          // TODO(rh): How to prevent the peer from sending wrong peer IDs? Can we do that even?
+          // Check if the peer exists
+          if(peers.containsKey(targetPeerId)) {
+            // When sending the peer, it is the source 
+            m['peer']['id'] = peer.id;
+            peers[targetPeerId].send(m);
+          }
           break;
         default :
           print("Unknown message received!");
@@ -99,7 +102,7 @@ class SignalingServer {
    */
   
   void _joinRoom(Peer peer, Map m) {
-    Room room = rooms.putIfAbsent(m['room'], () => new Room(m['room']));
+    Room room = rooms.putIfAbsent(m['room'], () => new Room(m['room'], m['password']));
     // Send room message with a list of current peers to the peer
     print('Peer $peer join Room ${room.name}');
     peer.send({'type': 'room', 'name': room.name, 'peers': room.peers.keys.toList(), 'peer': {'id': peer.id}});
