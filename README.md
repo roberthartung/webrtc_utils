@@ -6,8 +6,8 @@ The *webrtc_utils* package will help you to use WebRTC in your Dart applications
 
 WebRTC is a concept supported by Chrome, Opera and Firefox to enable **Web** based **R**eal **T**ime **C**ommunication. WebRTC will establish a Peer-to-Peer (P2P) connection (*RtcPeerConnection*) between two browsers. This connection can be used to exchange data. The following types of data exchange are supported:
 
-1. Streams (like video or audio captured from a webcam or the desktop, later requires your app to be a (chrome) extensions) 
-2. Byte based data (any type of messages using *RtcDataChannel*, like strings (chat messages) or other information that can be represented as a series of bytes)
+1. **Streams** (like video or audio captured from a webcam or the desktop, later requires your app to be a (chrome) extensions) 
+2. **List of bytes** (any type of messages using *RtcDataChannel*, like strings (chat messages) or other information that can be represented as a series of bytes)
 
 ## Purpose of webrtc_utils
 
