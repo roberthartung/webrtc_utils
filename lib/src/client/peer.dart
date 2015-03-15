@@ -19,6 +19,8 @@ class Peer {
   // The signaling channel to send data to
   final SignalingChannel _signalingChannel;
   
+  final Map<String, ProtocolProvider> _protocolProviders;
+  
   // EventStream when the remote peer adds a stream
   Stream<MediaStreamEvent> get onAddStream => _pc.onAddStream;
   
@@ -26,8 +28,8 @@ class Peer {
   Stream<MediaStreamEvent> get onRemoveStream => _pc.onRemoveStream;
   
   // Notifies yourself when a new data channel was created locally or remotely
-  Stream<RtcDataChannel> get onChannelCreated => _onChannelCreatedController.stream;
-  StreamController<RtcDataChannel> _onChannelCreatedController = new StreamController.broadcast();
+  Stream<DataChannelProtocol> get onChannelCreated => _onChannelCreatedController.stream;
+  StreamController<DataChannelProtocol> _onChannelCreatedController = new StreamController.broadcast();
   
   // int _channelId = 1;
   
@@ -35,7 +37,7 @@ class Peer {
    * Internal constructor that is called from the [P2PClient]
    */
   
-  Peer._(this.room, this.id, this._signalingChannel, Map rtcConfiguration, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}]) : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
+  Peer._(this.room, this.id, this._signalingChannel, Map rtcConfiguration, this._protocolProviders, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}]) : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
     _pc.onNegotiationNeeded.listen((Event ev) { 
       print('Connection.negotiationNeeded');
       // Send offer to the other peer
@@ -55,8 +57,7 @@ class Peer {
     });
     
     _pc.onDataChannel.listen((RtcDataChannelEvent ev) {
-      //print('[$this.EVENT:onDataChannel] ${ev.channel}');
-      _onChannelCreatedController.add(ev.channel);
+      _notifyChannelCreated(ev.channel);
     });
     
     /*
@@ -68,6 +69,22 @@ class Peer {
       print('[Event] IceConnectionStateChange: ${_pc.iceConnectionState} (${_pc.iceGatheringState})');
     });
     */
+  }
+  
+  void _notifyChannelCreated(RtcDataChannel channel) {
+    print('[$this] Channel created: ${channel.label} with protocol ${channel.protocol}');
+    switch(channel.protocol) {
+      case 'string' :
+        _onChannelCreatedController.add(new StringProtocol(channel));
+        break;
+      default :
+        if(_protocolProviders.containsKey(channel.protocol)) {
+          _onChannelCreatedController.add(_protocolProviders[channel.protocol].provide(channel));
+        } else {
+          _onChannelCreatedController.add(new RawProtocol(channel));
+        }
+        break;
+    }
   }
   
   /**
@@ -82,8 +99,7 @@ class Peer {
     }
     */
     RtcDataChannel channel = _pc.createDataChannel(label, options);
-    print('[$this] Channel created: ${channel.label}');
-    _onChannelCreatedController.add(channel);
+    _notifyChannelCreated(channel);
   }
   
   /**

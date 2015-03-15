@@ -5,39 +5,90 @@ part of webrtc_utils.client;
  */
 
 abstract class P2PClient {
-  int _id;
+  /**
+   * The signaling channel to use for establishing a connection
+   */
   
+  final SignalingChannel _signalingChannel;
+  
+  /**
+   * The rtcConfiguration Map that specifies iceServers
+   */
+    
+  final Map _rtcConfiguration;
+  
+  /**
+   * Protocol providers
+   */
+  
+  final Map<String, ProtocolProvider> _protocolProviders = {};
+  
+  /**
+   * Local ID assigned by the signaling server 
+   */
+  
+  int _id;
   int get id => _id;
+  
+  /**
+   * List of rooms the client is participating in
+   */
   
   Map<String, Room> rooms = {};
   
+  /**
+   * List of all other peers
+   */
+  
   Map<int, Peer> peers = {};
   
-  StreamController<int> _onConnectedController = new StreamController();
+  /**
+   * Event stream for when the connection to the signaling server is established
+   */
   
-  Stream<int> get onConnected => _onConnectedController.stream;
+  Stream<int> get onConnect => _onConnectController.stream;
+  StreamController<int> _onConnectController = new StreamController();
   
-  StreamController<Room> _onRoomJoinedController = new StreamController();
-    
-  Stream<Room> get onRoomJoined => _onRoomJoinedController.stream;
+  /**
+   * Event stream when you join a room
+   */
   
-  final SignalingChannel _signalingChannel; 
+  Stream<Room> get onJoinRoom => _onJoinRoomController.stream;
+  StreamController<Room> _onJoinRoomController = new StreamController();
   
-  final Map _rtcConfiguration;
+  /**
+   * Constructor
+   */
   
   P2PClient(this._signalingChannel, this._rtcConfiguration) {
     _signalingChannel.onMessage.listen(_onSignalingMessage);
   }
   
-  void join(String room) {
-    _signalingChannel.send(new JoinRoomMessage(room, _id));
+  /**
+   * Adds a protocol provider
+   */
+  
+  void addProtocolProvider(String protocol, ProtocolProvider provider) {
+    _protocolProviders[protocol] = provider;
   }
+  
+  /**
+   * Joins a [room] with an optional [password]
+   */
+  
+  void join(String room, [String password = null]) {
+    _signalingChannel.send(new JoinRoomMessage(room, password, _id));
+  }
+  
+  /**
+   * Internal handler for when nwe receive a [SignalingMessage]
+   */
   
   void _onSignalingMessage(SignalingMessage sm) {
     // Get Peer and PeerConnection from SignalMessage's peerId
     if(sm is WelcomeMessage) {
       _id = sm.peerId;
-      _onConnectedController.add(_id);
+      _onConnectController.add(_id);
       return;
     } else if(sm is RoomMessage) {
       // Joined a room
@@ -45,16 +96,16 @@ abstract class P2PClient {
       rooms[room.name] = room;
       // TODO(rh): We should create an event for the initial peer list.
       sm.peers.forEach((int peerId) {
-        Peer peer = new Peer._(room, peerId, _signalingChannel, _rtcConfiguration);
+        Peer peer = new Peer._(room, peerId, _signalingChannel, _rtcConfiguration, _protocolProviders);
         room._peers.add(peer);
         peers[peer.id] = peer;
       });
-      _onRoomJoinedController.add(room);
+      _onJoinRoomController.add(room);
       return;
     } else if(sm is JoinMessage) {
       // A peer joined a room
       Room room = rooms[sm.room];
-      Peer peer = new Peer._(room, sm.peerId, _signalingChannel, _rtcConfiguration);
+      Peer peer = new Peer._(room, sm.peerId, _signalingChannel, _rtcConfiguration, _protocolProviders);
       peers[peer.id] = peer;
       room._addPeer(peer);
       return;
