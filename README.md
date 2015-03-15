@@ -1,6 +1,6 @@
 # webrtc_utils
 
-The *webrtc_utils* package will help you to use WebRTC in your Dart applications. It offers different wrappers and extension points to help you with your application and to make your life easier. The purpose of this package is to hide necessary details from the user's application, but also give you the the ability and freedom to use your own extensions.
+The *webrtc_utils* package will help you to use WebRTC (See: [Official Website](http://www.webrtc.org/), [W3C](http://www.w3.org/TR/webrtc/)) in your Dart applications. It offers different wrappers and extension points to help you with your application and to make your life easier. The purpose of this package is to hide necessary details from the user's application, but also give you the the ability and freedom to use your own extensions.
 
 ## What is WebRTC
 
