@@ -21,7 +21,8 @@ abstract class P2PClient {
    * Protocol providers
    */
   
-  final Map<String, ProtocolProvider> _protocolProviders = {};
+  ProtocolProvider _protocolProvider = new DefaultProtocolProvider();
+  // ProtocolProvider get protocolProvider => _protocolProvider;
   
   /**
    * Local ID assigned by the signaling server 
@@ -68,8 +69,8 @@ abstract class P2PClient {
    * Adds a protocol provider
    */
   
-  void addProtocolProvider(String protocol, ProtocolProvider provider) {
-    _protocolProviders[protocol] = provider;
+  void setProtocolProvider(ProtocolProvider provider) {
+    _protocolProvider = provider;
   }
   
   /**
@@ -96,7 +97,7 @@ abstract class P2PClient {
       rooms[room.name] = room;
       // TODO(rh): We should create an event for the initial peer list.
       sm.peers.forEach((int peerId) {
-        Peer peer = new Peer._(room, peerId, _signalingChannel, _rtcConfiguration, _protocolProviders);
+        Peer peer = new Peer._(room, peerId, _signalingChannel, _rtcConfiguration, _protocolProvider);
         room._peers.add(peer);
         peers[peer.id] = peer;
       });
@@ -105,7 +106,7 @@ abstract class P2PClient {
     } else if(sm is JoinMessage) {
       // A peer joined a room
       Room room = rooms[sm.room];
-      Peer peer = new Peer._(room, sm.peerId, _signalingChannel, _rtcConfiguration, _protocolProviders);
+      Peer peer = new Peer._(room, sm.peerId, _signalingChannel, _rtcConfiguration, _protocolProvider);
       peers[peer.id] = peer;
       room._addPeer(peer);
       return;

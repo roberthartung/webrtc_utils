@@ -19,7 +19,7 @@ class Peer {
   // The signaling channel to send data to
   final SignalingChannel _signalingChannel;
   
-  final Map<String, ProtocolProvider> _protocolProviders;
+  final ProtocolProvider _protocolProvider;
   
   // EventStream when the remote peer adds a stream
   Stream<MediaStreamEvent> get onAddStream => _pc.onAddStream;
@@ -28,8 +28,16 @@ class Peer {
   Stream<MediaStreamEvent> get onRemoveStream => _pc.onRemoveStream;
   
   // Notifies yourself when a new data channel was created locally or remotely
-  Stream<DataChannelProtocol> get onChannelCreated => _onChannelCreatedController.stream;
-  StreamController<DataChannelProtocol> _onChannelCreatedController = new StreamController.broadcast();
+  Stream<RtcDataChannel> get onChannelCreated => _onChannelCreatedController.stream;
+  StreamController<RtcDataChannel> _onChannelCreatedController = new StreamController.broadcast();
+  
+  /**
+   * Map of [RtcDataChannel] labels to their protocols
+   * 
+   * TODO(rh): Do we need a map to save channels in the peer?
+   */
+  
+  final Map<String, DataChannelProtocol> channels = {};
   
   // int _channelId = 1;
   
@@ -37,7 +45,7 @@ class Peer {
    * Internal constructor that is called from the [P2PClient]
    */
   
-  Peer._(this.room, this.id, this._signalingChannel, Map rtcConfiguration, this._protocolProviders, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}]) : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
+  Peer._(this.room, this.id, this._signalingChannel, Map rtcConfiguration, this._protocolProvider, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}]) : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
     _pc.onNegotiationNeeded.listen((Event ev) { 
       print('Connection.negotiationNeeded');
       // Send offer to the other peer
@@ -73,19 +81,28 @@ class Peer {
   
   void _notifyChannelCreated(RtcDataChannel channel) {
     print('[$this] Channel created: ${channel.label} with protocol ${channel.protocol}');
+    // channels[protocol.channel.label] = protocol;
+    _onChannelCreatedController.add(channel);
+    DataChannelProtocol protocol = _protocolProvider.provide(this, channel);
+    if(protocol != null) {
+      // _onProtocol.add(protocol);
+    }
+    /*
     switch(channel.protocol) {
       case 'string' :
-        _onChannelCreatedController.add(new StringProtocol(channel));
+        // _notifyProtocol(channel, );
+        // _onChannelCreatedController.add(new StringProtocol(channel));
         break;
       default :
         // TODO(rh): Use a protocol factory instead of a provider?
         if(_protocolProviders.containsKey(channel.protocol)) {
-          _onChannelCreatedController.add(_protocolProviders[channel.protocol].provide(this, channel));
+          _onChannelCreatedController.add();
         } else {
           _onChannelCreatedController.add(new RawProtocol(channel));
         }
         break;
     }
+    */
   }
   
   /**

@@ -77,3 +77,13 @@ class StringProtocol extends RawProtocol<String> {
 abstract class ProtocolProvider {
   DataChannelProtocol provide(Peer peer, RtcDataChannel channel);
 }
+
+/**
+ * Default implementation of a [ProtocolProvider] that always returns a RawProtocol
+ */
+
+class DefaultProtocolProvider implements ProtocolProvider {
+  DataChannelProtocol provide(Peer peer, RtcDataChannel channel) {
+    return new RawProtocol(channel);
+  }
+}

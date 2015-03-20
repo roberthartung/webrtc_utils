@@ -1,23 +1,27 @@
+/**
+ * Communication part of the game library
+ * 
+ * Provides basic communication classes like [GameMessage] and an interface for serializing gamemessages
+ */
+
 part of webrtc_utils.game;
 
 /**
- * Represents a message within the game
+ * The message factory unserializes and serializes messages
  */
 
-abstract class GameMessage {
-  TypedData serialize();
-}
-
-abstract class GameMessageFactory {
-  GameMessage unserialize(TypedData data);
+abstract class MessageFactory<M> {
+  M unserialize(TypedData data);
+  TypedData serialize(M message);
 }
 
 /**
- * The protocol on top of a [RtcDataChannel] that is used to exchance game information between peers
+ * A message based protocol on top of a [RtcDataChannel] that is used to exchance information between peers
+ * 
+ * To leave implementation, definition and serialization of messages up to the user, the concept of a [MessageFactory] is used
  */
 
-class GameProtocol implements DataChannelProtocol<GameMessage> {
-  
+class MessageProtocol<M> implements DataChannelProtocol<M> {
   /**
    * The underlying [RtcDataChannel]
    */
@@ -28,13 +32,13 @@ class GameProtocol implements DataChannelProtocol<GameMessage> {
    * The P2P Game instance, used to get the [GameMessageFactory] from
    */
   
-  final P2PGame game;
+  final MessageFactory messageFactory;
   
-  Stream<GameMessage> get onMessage => _onMessageController.stream;
-  StreamController<GameMessage> _onMessageController = new StreamController<GameMessage>.broadcast();
+  Stream<M> get onMessage => _onMessageController.stream;
+  StreamController<M> _onMessageController = new StreamController<M>.broadcast();
   
-  GameProtocol(this.game, this.channel) {
-    // Data will be transfered as ArrayBuffer (ByteBuffer)
+  MessageProtocol(this.channel, this.messageFactory) {
+    // Data will be transfered as ArrayBuffer (TypedData -> ByteBuffer instance)
     // NOTE: blob is not supported at the moment!
     channel.binaryType = 'arraybuffer';
     channel.onMessage.listen((MessageEvent ev) => _onMessage(ev.data));
@@ -44,8 +48,8 @@ class GameProtocol implements DataChannelProtocol<GameMessage> {
    * Sends a game message
    */
   
-  void send(GameMessage m) {
-    channel.send(m.serialize());
+  void send(M m) {
+    channel.send(messageFactory.serialize(m));
   }
   
   /**
@@ -53,9 +57,8 @@ class GameProtocol implements DataChannelProtocol<GameMessage> {
    */
   
   void _onMessage(Object message) {
-    if(message is ByteBuffer) {
-      ByteData data = message.asByteData();
-      _onMessageController.add(game.messageFactory.unserialize(data));
+    if(message is TypedData) {
+      _onMessageController.add(messageFactory.unserialize(message));
     } else {
       throw "Unsupported message in GameProtocol: $message";
     }

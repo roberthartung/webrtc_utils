@@ -2,18 +2,6 @@ part of webrtc_utils.game;
 
 class P2PGame extends WebSocketP2PClient {
   /**
-   * [GameMessageFactory] that instantiates the correct messages from [TypedData] 
-   */
-  
-  final GameMessageFactory messageFactory;
-  
-  /**
-   * [ProtocolProvider] that provides an instance of a protocol for a [Peer] and a [RtcDataChannel]
-   */
-  
-  final ProtocolProvider protocolProvider;
-  
-  /**
    * List of remote Players in the game
    */
   
@@ -49,9 +37,7 @@ class P2PGame extends WebSocketP2PClient {
    */
  
   P2PGame(String webSocketUrl,
-      Map rtcConfiguration,
-      this.protocolProvider,
-      this.messageFactory
+      Map rtcConfiguration
     )
     : super(webSocketUrl, rtcConfiguration);
 }
