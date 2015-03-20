@@ -19,14 +19,14 @@ void _onPeerAdded(Peer peer) {
   peer.onChannelCreated.listen(_setupChannel);
 }
 
-void _setupChannel(RtcDataChannel channel) {
+void _setupChannel(RawProtocol protocol) {
   print('Channel created');
-  channel.onOpen.listen((_) {
+  protocol.channel.onOpen.listen((_) {
     print('Channel opened');
-    channel.send('Hello from ${client.id}');
+    protocol.send('Hello from ${client.id}');
   });
-  channel.onMessage.listen((MessageEvent ev) {
-    print('Message in Channel ${channel.label}: ${ev.data}');
+  protocol.onMessage.listen((message) {
+    print('Message in Channel ${protocol.channel.label}: $message');
   });
 }
 
@@ -34,13 +34,13 @@ void main() {
   final UListElement peerList = querySelector('#peers');
   client = new WebSocketP2PClient(url, rtcConfiguration);
   
-  client.onConnected.listen((final int id) {
+  client.onConnect.listen((final int id) {
     print('Now connected to the server with id $id');
     // After we're connect and got our ID, we can now join rooms
     client.join('demo');
   });
   
-  client.onRoomJoined.listen((final Room room) {
+  client.onJoinRoom.listen((final Room room) {
     print('I joined Room ${room.name} with peers ${room.peers}');
     
     // Loop through existing peers

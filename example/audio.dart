@@ -28,11 +28,11 @@ void main() {
   final UListElement peerList = querySelector('#peers');
   client = new WebSocketP2PClient(url, rtcConfiguration);
   
-  client.onConnected.listen((final int id) {
+  client.onConnect.listen((final int id) {
     client.join('krypto');
   });
   
-  client.onRoomJoined.listen((final Room room) {
+  client.onJoinRoom.listen((final Room room) {
     print('I joined Room ${room.name} with peers ${room.peers}');
     
     // Loop through existing peers

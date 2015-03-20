@@ -8,11 +8,11 @@ P2PClient client;
 void main() {
   client = new WebSocketP2PClient(url, rtcConfiguration);
   
-  client.onConnected.listen((final int id) {
+  client.onConnect.listen((final int id) {
     // Join rooms with client.join(...)
   });
   
-  client.onRoomJoined.listen((final Room room) {
+  client.onJoinRoom.listen((final Room room) {
     // Existing peer in the channel are available in room.peers
     // Listen for room.onLeave
     // Listen for room.onJoin, to create streams and channels when a new remote client joins

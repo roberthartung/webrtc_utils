@@ -10,7 +10,8 @@ P2PClient client;
 Map<String, File> files = {};
 void _onPeerJoined(Peer peer) {
   // TODO(rh): It looks like we cannot open another RtcDataChannel when the old one is still open
-  peer.onChannelCreated.listen((RtcDataChannel channel) {
+  peer.onChannelCreated.listen((RawProtocol proto) {
+    final RtcDataChannel channel = proto.channel;
     print('Channel created with label ${channel.label} and id ${channel.id}');
     channel.binaryType = 'arraybuffer';
     
@@ -111,12 +112,12 @@ void _onPeerJoined(Peer peer) {
 
 void main() {
   client = new WebSocketP2PClient(url, rtcConfiguration);
-  client.onConnected.listen((final int id) {
+  client.onConnect.listen((final int id) {
     print('Local ID: $id');
     client.join('filetransfer');
   });
   
-  client.onRoomJoined.listen((final Room room) {
+  client.onJoinRoom.listen((final Room room) {
     room.peers.forEach(_onPeerJoined);
     room.onJoin.listen(_onPeerJoined);
     

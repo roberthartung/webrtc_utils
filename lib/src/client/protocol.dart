@@ -11,6 +11,7 @@ part of webrtc_utils.client;
  */
 
 abstract class DataChannelProtocol<M> {
+  RtcDataChannel get channel;
   Stream<M> get onMessage;
   void send(dynamic data);
 }
@@ -74,5 +75,5 @@ class StringProtocol extends RawProtocol<String> {
  */
 
 abstract class ProtocolProvider {
-  DataChannelProtocol provide(RtcDataChannel channel);
+  DataChannelProtocol provide(Peer peer, RtcDataChannel channel);
 }

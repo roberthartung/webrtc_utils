@@ -13,7 +13,9 @@ int channelId = 1;
 void _onPeerJoined(Peer peer) {
   bool isInitiator = client.id < peer.id;
   
-  peer.onChannelCreated.listen((RtcDataChannel channel) {
+  peer.onChannelCreated.listen((StringProtocol proto) {
+    final RtcDataChannel channel = proto.channel;
+    
     print('Channel created: ${channel.label} (ID: ${channel.id}, Reliable: ${channel.reliable})');
     channel.binaryType = 'arraybuffer';
     
@@ -87,12 +89,12 @@ void _onPeerJoined(Peer peer) {
 
 void main() {
   client = new WebSocketP2PClient(url, rtcConfiguration);
-  client.onConnected.listen((final int id) {
+  client.onConnect.listen((final int id) {
     print('Local ID: $id');
     client.join('filetransfer');
   });
   
-  client.onRoomJoined.listen((final Room room) {
+  client.onJoinRoom.listen((final Room room) {
     room.peers.forEach(_onPeerJoined);
     room.onJoin.listen(_onPeerJoined);
   });

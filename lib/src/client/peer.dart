@@ -78,8 +78,9 @@ class Peer {
         _onChannelCreatedController.add(new StringProtocol(channel));
         break;
       default :
+        // TODO(rh): Use a protocol factory instead of a provider?
         if(_protocolProviders.containsKey(channel.protocol)) {
-          _onChannelCreatedController.add(_protocolProviders[channel.protocol].provide(channel));
+          _onChannelCreatedController.add(_protocolProviders[channel.protocol].provide(this, channel));
         } else {
           _onChannelCreatedController.add(new RawProtocol(channel));
         }

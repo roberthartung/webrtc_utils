@@ -1,0 +1,18 @@
+{
+  "name": "Easy Sharing",
+  "version": "1",
+  
+  "manifest_version": 2,
+  
+  "icons": {"128": "dart_icon.png"},
+  
+  // contextMenus: Share links/pictures directly with users
+  // omnibox: register keyword in adress bar
+  "permissions": ["desktopCapture", "contextMenus", "identity", "identity.email", "notifications", "omnibox"],
+  
+  "app": {
+    "background": {
+      "scripts": ["background.js"]
+    }
+  }
+}
