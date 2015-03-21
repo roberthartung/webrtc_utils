@@ -66,16 +66,18 @@ abstract class P2PGame extends WebSocketP2PClient {
     )
     : super(webSocketUrl, rtcConfiguration) {
     onConnect.listen((int id) {
-      if(_localPlayer != null) {
-        // TODO(rh): What's wrong then? Is this possible?
-      }
-      _localPlayer = createLocalPlayer(id);
-      _playerJoined(_localPlayer);
+      
     });
     
     // TODO(rh): What happens when a player leaves / joins a room?
     onJoinRoom.listen((Room room) {
       _room = room;
+      
+      if(_localPlayer != null) {
+        // TODO(rh): What's wrong then? Is this possible?
+      }
+      _localPlayer = createLocalPlayer(id);
+      _playerJoined(_localPlayer);
       
       room.peers.forEach((Peer peer) {
         RemotePlayer player = createRemotePlayer(peer);

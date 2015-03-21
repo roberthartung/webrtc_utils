@@ -87,3 +87,21 @@ class DefaultProtocolProvider implements ProtocolProvider {
     return new RawProtocol(channel);
   }
 }
+
+/**
+ * A Protcol that encodes objects from/to json
+ */
+
+class JsonProtocol extends StringProtocol {
+  JsonProtocol(RtcDataChannel channel) : super(channel);
+  
+  @override
+  void _onMessage(String data) {
+    super._onMessage(JSON.decode(data));
+  }
+  
+  @override
+  void send(Object value) {
+    super.send(JSON.encode(value));
+  }
+}

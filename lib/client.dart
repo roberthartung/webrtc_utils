@@ -3,6 +3,8 @@ library webrtc_utils.client;
 import 'dart:async';
 import 'signaling.dart';
 import 'converter.dart';
+// JsonProtocol
+import 'dart:convert';
 // Rtc*
 import 'dart:html';
 

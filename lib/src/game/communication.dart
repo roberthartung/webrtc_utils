@@ -11,8 +11,8 @@ part of webrtc_utils.game;
  */
 
 abstract class MessageFactory<M> {
-  M unserialize(TypedData data);
-  TypedData serialize(M message);
+  M unserialize(dynamic data);
+  dynamic serialize(M message);
 }
 
 /**
@@ -40,7 +40,7 @@ class MessageProtocol<M> implements DataChannelProtocol<M> {
   MessageProtocol(this.channel, this.messageFactory) {
     // Data will be transfered as ArrayBuffer (TypedData -> ByteBuffer instance)
     // NOTE: blob is not supported at the moment!
-    channel.binaryType = 'arraybuffer';
+    //channel.binaryType = 'arraybuffer';
     channel.onMessage.listen((MessageEvent ev) => _onMessage(ev.data));
   }
   
@@ -56,11 +56,7 @@ class MessageProtocol<M> implements DataChannelProtocol<M> {
    * Internal message handler
    */
   
-  void _onMessage(Object message) {
-    if(message is TypedData) {
-      _onMessageController.add(messageFactory.unserialize(message));
-    } else {
-      throw "Unsupported message in GameProtocol: $message";
-    }
+  void _onMessage(dynamic message) {
+    _onMessageController.add(messageFactory.unserialize(message));
   }
 }
