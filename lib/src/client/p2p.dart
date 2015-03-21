@@ -48,14 +48,14 @@ abstract class P2PClient {
    */
   
   Stream<int> get onConnect => _onConnectController.stream;
-  StreamController<int> _onConnectController = new StreamController();
+  StreamController<int> _onConnectController = new StreamController.broadcast();
   
   /**
    * Event stream when you join a room
    */
   
   Stream<Room> get onJoinRoom => _onJoinRoomController.stream;
-  StreamController<Room> _onJoinRoomController = new StreamController();
+  StreamController<Room> _onJoinRoomController = new StreamController.broadcast();
   
   /**
    * Constructor

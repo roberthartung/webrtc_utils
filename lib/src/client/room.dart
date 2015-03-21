@@ -7,10 +7,10 @@ part of webrtc_utils.client;
 class Room {
   final String name;
   
-  StreamController<Peer> _onJoinController = new StreamController();
+  StreamController<Peer> _onJoinController = new StreamController.broadcast();
   Stream<Peer> get onJoin => _onJoinController.stream;
   
-  StreamController<Peer> _onLeaveController = new StreamController();
+  StreamController<Peer> _onLeaveController = new StreamController.broadcast();
   Stream<Peer> get onLeave => _onLeaveController.stream;
   
   final List<Peer> _peers = [];

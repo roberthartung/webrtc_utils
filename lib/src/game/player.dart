@@ -5,17 +5,13 @@ part of webrtc_utils.game;
  */
 
 abstract class Player {
-  final P2PGame game; // CurveGame
-  
-  // final LIElement li;
+  final P2PGame game;
   
   final int id;
   
   bool get isLocal => this is LocalPlayer;
   
-  Player(this.game, this.id) /* : li = new LIElement() */ { 
-    // li.appendHtml('<span class="name">Player#$id</span><span class="ping">-</span>');
-  }
+  Player(this.game, this.id);
 }
 
 abstract class ReadyPlayer {
@@ -93,18 +89,18 @@ class RemotePlayer extends Player {
   
   final Peer peer;
   
-  Stream<DataChannelProtocol> get onProtocol => _onProtocolStreamController.stream;
-  StreamController<DataChannelProtocol> _onProtocolStreamController = new StreamController<DataChannelProtocol>.broadcast();
+  //Stream<DataChannelProtocol> get onProtocol => _onProtocolStreamController.stream;
+  //StreamController<DataChannelProtocol> _onProtocolStreamController = new StreamController<DataChannelProtocol>.broadcast();
   
   RemotePlayer(P2PGame game, Peer peer) : super(game, peer.id), this.peer = peer {
-    peer.onChannelCreated.listen(_onChannelCreated);
+    //peer.onChannel.listen(_onChannelCreated);
   }
-  
+  /*
   void _onChannelCreated(RtcDataChannel channel) {
     // Get Protocol from peer
     // _onProtocolStreamController.add(protocol);
   }
-  
+  */
   /*
   void _onPingMessage(PingMessage ping) {
     //print('Ping message received: ${ping.time}');

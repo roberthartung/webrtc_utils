@@ -27,9 +27,12 @@ class Peer {
   // EventStream when the remote peer removes a stream
   Stream<MediaStreamEvent> get onRemoveStream => _pc.onRemoveStream;
   
-  // Notifies yourself when a new data channel was created locally or remotely
-  Stream<RtcDataChannel> get onChannelCreated => _onChannelCreatedController.stream;
-  StreamController<RtcDataChannel> _onChannelCreatedController = new StreamController.broadcast();
+  // Notifies when a new data channel was created locally or remotely
+  Stream<RtcDataChannel> get onChannel => _onChannelController.stream;
+  StreamController<RtcDataChannel> _onChannelController = new StreamController.broadcast();
+  
+  Stream<DataChannelProtocol> get onProtocol => _onProtocolController.stream;
+  StreamController<DataChannelProtocol> _onProtocolController = new StreamController.broadcast();
   
   /**
    * Map of [RtcDataChannel] labels to their protocols
@@ -81,28 +84,18 @@ class Peer {
   
   void _notifyChannelCreated(RtcDataChannel channel) {
     print('[$this] Channel created: ${channel.label} with protocol ${channel.protocol}');
-    // channels[protocol.channel.label] = protocol;
-    _onChannelCreatedController.add(channel);
+    _onChannelController.add(channel);
     DataChannelProtocol protocol = _protocolProvider.provide(this, channel);
     if(protocol != null) {
-      // _onProtocol.add(protocol);
+      channel.onOpen.listen((Event ev) {
+        _onProtocolController.add(protocol);
+        print('[$this] Channel ${channel.label} is open.');
+      });
+      channels[protocol.channel.label] = protocol;
+      print('[$this] Protocol: $protocol');
+    } else {
+      throw "Protocol returned by ProtocolProvider $_protocolProvider should not be null";
     }
-    /*
-    switch(channel.protocol) {
-      case 'string' :
-        // _notifyProtocol(channel, );
-        // _onChannelCreatedController.add(new StringProtocol(channel));
-        break;
-      default :
-        // TODO(rh): Use a protocol factory instead of a provider?
-        if(_protocolProviders.containsKey(channel.protocol)) {
-          _onChannelCreatedController.add();
-        } else {
-          _onChannelCreatedController.add(new RawProtocol(channel));
-        }
-        break;
-    }
-    */
   }
   
   /**
@@ -116,8 +109,7 @@ class Peer {
       options = {'id': _channelId++};
     }
     */
-    RtcDataChannel channel = _pc.createDataChannel(label, options);
-    _notifyChannelCreated(channel);
+    _notifyChannelCreated(_pc.createDataChannel(label, options));
   }
   
   /**
