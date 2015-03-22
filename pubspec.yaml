@@ -9,3 +9,5 @@ documentation: http://www.roberthartung.de
 dependencies:
   browser: any
   chrome: any
+transformers:
+ - chrome

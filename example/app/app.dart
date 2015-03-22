@@ -2,8 +2,37 @@ import 'dart:html';
 import 'package:chrome/chrome_ext.dart';
 import 'package:webrtc_utils/client.dart';
 
-const Map rtcConfiguration = const {"iceServers": const [ const {"url": "stun:stun.l.google.com:19302"}]};
-final String url = 'ws://localhost:28080';
+/*
+  // contextMenus: Share links/pictures directly with users
+  // omnibox: register keyword in adress bar
+  // , "omnibox"
+*/
+
+const List iceServers = const [
+  const {'url':'stun:stun01.sipphone.com'},
+  const {'url':'stun:stun.ekiga.net'},
+  const {'url':'stun:stun.fwdnet.net'},
+  const {'url':'stun:stun.ideasip.com'},
+  const {'url':'stun:stun.iptel.org'},
+  const {'url':'stun:stun.rixtelecom.se'},
+  const {'url':'stun:stun.schlund.de'},
+  const {'url':'stun:stun.l.google.com:19302'}, 
+  const {'url':'stun:stun1.l.google.com:19302'},
+  const {'url':'stun:stun2.l.google.com:19302'},
+  const {'url':'stun:stun3.l.google.com:19302'},
+  const {'url':'stun:stun4.l.google.com:19302'},
+  const {'url':'stun:stunserver.org'},
+  const {'url':'stun:stun.softjoys.com'},
+  const {'url':'stun:stun.voiparound.com'},
+  const {'url':'stun:stun.voipbuster.com'},
+  const {'url':'stun:stun.voipstunt.com'},
+  const {'url':'stun:stun.voxgratia.org'},
+  const {'url':'stun:stun.xten.com'}
+];
+
+const Map rtcConfiguration = const {"iceServers": iceServers};
+
+final String url = 'ws://roberthartung.dyndns.org:28080';
 P2PClient client;
 
 void _peerJoined(Peer peer) {
@@ -25,24 +54,24 @@ void _peerJoined(Peer peer) {
 }
 
 void main() {
+  print('loaded');
   client = new WebSocketP2PClient(url, rtcConfiguration);
   
   client.onConnect.listen((localId) {
+    print('I am connected. Joining room.');
     client.join('demo');
   });
   
   client.onJoinRoom.listen((Room room) {
+    print('Joined room');
     room.peers.forEach(_peerJoined);
     room.onJoin.listen(_peerJoined);
   });
   /*
-  
-  
   identity.getAccounts().then((List<AccountInfo> accounts) {
     print(accounts);
   });
   */
-  
   identity.onSignInChanged.listen((OnSignInChangedEvent ev) {
     if(ev.signedIn) {
       identity.getProfileUserInfo().then((ProfileUserInfo info) {
