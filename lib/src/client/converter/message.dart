@@ -13,8 +13,10 @@ class MessageConverter extends JsonConverter {
       return new IceCandidateMessage.fromObject(m);
     } else if(m['type'] == WelcomeMessage.TYPE) {
       return new WelcomeMessage.fromObject(m);
-    } else if(m['type'] == RoomMessage.TYPE) {
-      return new RoomMessage.fromObject(m);
+    } else if(m['type'] == RoomJoinedMessage.TYPE) {
+      return new RoomJoinedMessage.fromObject(m);
+    } else if(m['type'] == RoomLeftMessage.TYPE) {
+      return new RoomLeftMessage.fromObject(m);
     } else if(m['type'] == JoinMessage.TYPE) {
       return new JoinMessage.fromObject(m);
     } else if(m['type'] == LeaveMessage.TYPE) {

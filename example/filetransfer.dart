@@ -10,8 +10,7 @@ P2PClient client;
 Map<String, File> files = {};
 void _onPeerJoined(Peer peer) {
   // TODO(rh): It looks like we cannot open another RtcDataChannel when the old one is still open
-  peer.onChannelCreated.listen((RawProtocol proto) {
-    final RtcDataChannel channel = proto.channel;
+  peer.onChannel.listen((RtcDataChannel channel) {
     print('Channel created with label ${channel.label} and id ${channel.id}');
     channel.binaryType = 'arraybuffer';
     

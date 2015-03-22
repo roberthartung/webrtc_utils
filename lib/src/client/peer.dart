@@ -89,10 +89,8 @@ class Peer {
     if(protocol != null) {
       channel.onOpen.listen((Event ev) {
         _onProtocolController.add(protocol);
-        print('[$this] Channel ${channel.label} is open.');
       });
       channels[protocol.channel.label] = protocol;
-      print('[$this] Protocol: $protocol');
     } else {
       throw "Protocol returned by ProtocolProvider $_protocolProvider should not be null";
     }

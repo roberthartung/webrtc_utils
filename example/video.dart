@@ -16,17 +16,17 @@ void _onAddStream(Peer peer, MediaStream ms) {
 
 void _onPeerAdded(Peer peer) {
   peer.onAddStream.listen((MediaStreamEvent ev) => _onAddStream(peer, ev.stream));
-  peer.onChannelCreated.listen(_setupChannel);
+  peer.onChannel.listen(_setupChannel);
 }
 
-void _setupChannel(RawProtocol protocol) {
+void _setupChannel(RtcDataChannel channel) {
   print('Channel created');
-  protocol.channel.onOpen.listen((_) {
+  channel.onOpen.listen((_) {
     print('Channel opened');
-    protocol.send('Hello from ${client.id}');
+    channel.send('Hello from ${client.id}');
   });
-  protocol.onMessage.listen((message) {
-    print('Message in Channel ${protocol.channel.label}: $message');
+  channel.onMessage.listen((message) {
+    print('Message in Channel ${channel.label}: $message');
   });
 }
 

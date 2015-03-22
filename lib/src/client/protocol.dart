@@ -48,7 +48,7 @@ class RawProtocol<M> implements DataChannelProtocol<M> {
    * Internal function that listens for incoming messages
    */
   
-  void _onMessage(Object data) {
+  void _onMessage(M data) {
     _onMessageController.add(data);
   }
   
@@ -57,6 +57,7 @@ class RawProtocol<M> implements DataChannelProtocol<M> {
    */
   
   void send(M message) {
+    print('Sending $message to ${channel.label} via ${channel.protocol}');
     channel.send(message);
   }
 }

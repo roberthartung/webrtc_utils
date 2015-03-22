@@ -21,9 +21,22 @@ class WebSocketSignalingChannel implements SignalingChannel {
    * StreamController for streams of messages from the websocket
    */
   
-  final StreamController<SignalingMessage> _messageController = new StreamController<SignalingMessage>(); 
-    
+  final StreamController<SignalingMessage> _messageController = new StreamController.broadcast(); 
   Stream<SignalingMessage> get onMessage => _messageController.stream;
+  
+  /**
+   * Stream of close events of this signaling channel
+   */
+
+  Stream<int> get onClose => _onCloseController.stream;
+  final StreamController<int> _onCloseController = new StreamController.broadcast();
+  
+  /**
+   * Stream of open events of this signaling channel
+   */
+
+  Stream get onOpen => _onOpenController.stream;
+  final StreamController _onOpenController = new StreamController.broadcast(); 
   
   /**
    * Constructor: Tales a websocket Url and creates a connection using the "webrtc_signaling" protocol
@@ -38,11 +51,11 @@ class WebSocketSignalingChannel implements SignalingChannel {
   }
   
   void _onOpen(Event ev) {
-    print('ws opened');
+    _onOpenController.add(null);
   }
   
   void _onClose(CloseEvent ev) {
-    print('ws closed');
+    _onCloseController.add(ev.code);
   }
   
   /**

@@ -40,7 +40,7 @@ class MessageProtocol<M> implements DataChannelProtocol<M> {
   MessageProtocol(this.channel, this.messageFactory) {
     // Data will be transfered as ArrayBuffer (TypedData -> ByteBuffer instance)
     // NOTE: blob is not supported at the moment!
-    //channel.binaryType = 'arraybuffer';
+    // channel.binaryType = 'arraybuffer';
     channel.onMessage.listen((MessageEvent ev) => _onMessage(ev.data));
   }
   

@@ -13,9 +13,7 @@ int channelId = 1;
 void _onPeerJoined(Peer peer) {
   bool isInitiator = client.id < peer.id;
   
-  peer.onChannelCreated.listen((StringProtocol proto) {
-    final RtcDataChannel channel = proto.channel;
-    
+  peer.onChannel.listen((final RtcDataChannel channel) {
     print('Channel created: ${channel.label} (ID: ${channel.id}, Reliable: ${channel.reliable})');
     channel.binaryType = 'arraybuffer';
     

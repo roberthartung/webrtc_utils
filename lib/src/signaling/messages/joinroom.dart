@@ -7,6 +7,7 @@ class JoinRoomMessage extends SignalingMessage {
   String get type => TYPE;
   
   final String room;
+  
   final String password;
   
   JoinRoomMessage(this.room, this.password, int id) : super(id);

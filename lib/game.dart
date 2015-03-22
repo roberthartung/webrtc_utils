@@ -6,7 +6,6 @@ library webrtc_utils.game;
 
 import 'dart:html';
 import 'client.dart';
-import 'dart:typed_data';
 import 'dart:async';
 
 part 'src/game/p2p.dart';
