@@ -37,15 +37,20 @@ P2PClient client;
 
 void _peerJoined(Peer peer) {
   print('Peer joined $peer');
-  desktopCapture.chooseDesktopMedia(['screen'], (String streamId) {
+  // Open Dialog
+  desktopCapture.chooseDesktopMedia(['screen', 'window'], (String streamId) {
     if(streamId == null || streamId == '') {
       print('No access');
       return;
     }
     
     print('streamId: $streamId');
-    window.navigator.getUserMedia(video: {'mandatory': {'maxWidth': 1920, 'maxHeight': 1080, 'minFrameRate': 1, 'maxFrameRate': 60, 'chromeMediaSource': "desktop", 'chromeMediaSourceId': streamId }}).then((MediaStream ms) {
+    window.navigator.getUserMedia(video: {'mandatory': {'maxWidth': 1920, 'maxHeight': 1080, 'minFrameRate': 15, 'maxFrameRate': 30, 'chromeMediaSource': "desktop", 'chromeMediaSourceId': streamId }}).then((MediaStream ms) {
       peer.addStream(ms);
+      ms.getTracks().forEach((MediaStreamTrack track) {
+        print('Track $track ${track.kind} ${track.id} ${track.label}');
+        
+      });
       VideoElement video = querySelector('#preview');
       video.autoplay = true;
       video.src = Url.createObjectUrlFromStream(ms);
@@ -67,16 +72,20 @@ void main() {
     room.peers.forEach(_peerJoined);
     room.onJoin.listen(_peerJoined);
   });
+  
   /*
   identity.getAccounts().then((List<AccountInfo> accounts) {
     print(accounts);
   });
   */
+  
   identity.onSignInChanged.listen((OnSignInChangedEvent ev) {
     if(ev.signedIn) {
       identity.getProfileUserInfo().then((ProfileUserInfo info) {
-        //print(info.id);
-        print(info.email);
+        print('RoomName: ${info.email} Password: ${info.id}');
+        client.join(info.email, info.id);
+        InputElement a = querySelector('#localroomname');
+        a.value = 'http://cdnbot.rhscripts.de/webrtc/example/video.html#' + Uri.encodeFull(info.email);
       });
     } else {
       print('User logged out.');

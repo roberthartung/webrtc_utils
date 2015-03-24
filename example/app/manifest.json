@@ -4,7 +4,7 @@
   
   "manifest_version": 2,
   
-  "icons": {"128": "dart_icon.png"},
+  "icons": {"32": "share-32.png", "128": "share-128.png"},
 
   "permissions": ["desktopCapture", "contextMenus", "identity", "identity.email", "notifications"],
   

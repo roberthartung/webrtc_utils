@@ -10,4 +10,6 @@ dependencies:
   browser: any
   chrome: any
 transformers:
- - chrome
+- chrome
+- $dart2js:
+    csp: true
