@@ -1,8 +1,9 @@
 import 'package:webrtc_utils/client.dart';
 import 'dart:html';
 
+// window.location.hostname
 const Map rtcConfiguration = const {"iceServers": const [ const {"url": "stun:stun.l.google.com:19302"}]};
-final String url = 'ws://${window.location.hostname}:28080';
+final String url = 'ws://roberthartung.dyndns.org:28080';
 P2PClient client;
 
 void _onAddStream(Peer peer, MediaStream ms) {
@@ -37,7 +38,15 @@ void main() {
   client.onConnect.listen((final int id) {
     print('Now connected to the server with id $id');
     // After we're connect and got our ID, we can now join rooms
-    client.join('demo');
+    if(window.location.hash != '') {
+      client.join(window.location.hash.substring(1));
+    }
+  });
+  
+  window.onHashChange.listen((Event ev) {
+    if(window.location.hash != '') {
+      client.join(window.location.hash.substring(1));
+    }
   });
   
   client.onJoinRoom.listen((final Room room) {
