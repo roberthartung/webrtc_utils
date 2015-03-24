@@ -25,26 +25,4 @@ class MessageConverter extends JsonConverter {
     
     throw "Unable to decode string '$s'.";
   }
-  
-  /*
-  dynamic _reviver(String key, dynamic value) {
-    if(key == 'rtc_session_description') {
-      return new RtcSessionDescription(value);
-    } else if(key == 'rtc_ice_candidate') {
-      return new RtcIceCandidate(value);
-    }
-    
-    return value;
-  }
-  
-  dynamic _toEncodable(dynamic o) {
-    if(o is RtcSessionDescription) {
-      return {};
-    } else if(o is RtcIceCandidate) {
-      return {};
-    }
-    
-    throw 'Unable to JSON.encode $o';
-  }
-  */
 }

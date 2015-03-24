@@ -48,6 +48,7 @@ class WebSocketSignalingChannel implements SignalingChannel {
     _ws.onMessage.listen(_onMessage);
     _ws.onOpen.listen(_onOpen);
     _ws.onClose.listen(_onClose);
+    _ws.onError.listen(_onError);
   }
   
   void _onOpen(Event ev) {
@@ -55,7 +56,12 @@ class WebSocketSignalingChannel implements SignalingChannel {
   }
   
   void _onClose(CloseEvent ev) {
+    print('[$this] Closed: ${ev.reason}');
     _onCloseController.add(ev.code);
+  }
+  
+  void _onError(Event ev) {
+    print('[$this] Error');
   }
   
   /**

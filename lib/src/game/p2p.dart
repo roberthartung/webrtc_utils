@@ -45,6 +45,10 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer> extends We
   L get localPlayer => _localPlayer;
   L _localPlayer = null;
   
+  /**
+   * The last room we joined
+   */
+  
   Room get room => _room;
   Room _room;
   
@@ -92,13 +96,15 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer> extends We
         peerToPlayer[peer] = player;
         _playerJoined(player);
       });
-      
+      // Initially get game owner, after this the owner only changes if the player leaves
+      _getGameOwner();
+      // When a new player joins
       room.onJoin.listen((Peer peer) {
         R player = createRemotePlayer(peer);
         peerToPlayer[peer] = player;
         _playerJoined(player);
       });
-      
+      // When a player leaves
       room.onLeave.listen((Peer peer) {
         _playerLeft(peerToPlayer.remove(peer));
       });
@@ -111,6 +117,28 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer> extends We
     
     // TODO(rh): Reset players list when onLeaveRoom event occurs
   }
+  
+  /**
+   * Get game owner from all players (smalles id)
+   */
+  
+  void _getGameOwner() {
+    // Get new owner
+    players.forEach((Player player) {
+      _checkGameOwner(player);
+    });
+    _onGameOwnerChangedStreamController.add(_gameOwner);
+  }
+  
+  void _checkGameOwner(Player player) {
+    if(_gameOwner == null || player.id < _gameOwner.id) {
+      _gameOwner = player;
+    }
+  }
+  
+  /**
+   * Do cleanup after disconnect or room leave
+   */
   
   void cleanup() {
     _localPlayer = null;
@@ -125,11 +153,6 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer> extends We
    */
   
   void _playerJoined(Player player) {
-    if(_gameOwner == null || player.id < _gameOwner.id) {
-      _gameOwner = player;
-      _onGameOwnerChangedStreamController.add(_gameOwner);
-    }
-    
     _onPlayerJoinStreamController.add(player);
     players.add(player);
   }
@@ -139,19 +162,16 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer> extends We
    */
   
   void _playerLeft(Player player) {
+    players.remove(player);
+    // Fire this event before new game owner election to make sure an event handler
+    // can compare the current game owner with the player that left the game
+    _onPlayerLeaveStreamController.add(player);
+    
+    // If Player was game owner
     if(_gameOwner == player) {
       _gameOwner = null;
-      // Get new owner
-      players.forEach((Player player) {
-        if(_gameOwner == null || player.id < _gameOwner.id) {
-          _gameOwner = player;
-        }
-      });
-      _onGameOwnerChangedStreamController.add(_gameOwner);
+      _getGameOwner();
     }
-    
-    players.remove(player);
-    _onPlayerLeaveStreamController.add(player);
   }
   
   /**

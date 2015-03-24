@@ -4,7 +4,7 @@ part of webrtc_utils.client;
  * Basic P2P Client class
  */
 
-abstract class P2PClient {
+abstract class P2PClient<P extends Peer> {
   /**
    * The signaling channel to use for establishing a connection
    */
@@ -40,7 +40,7 @@ abstract class P2PClient {
    * List of all other peers
    */
   
-  final Map<int, Peer> peers = {};
+  final Map<int, P> peers = {};
   
   /**
    * Event stream for when the connection to the signaling server is established
@@ -95,6 +95,12 @@ abstract class P2PClient {
     _signalingChannel.send(new JoinRoomMessage(room, password, _id));
   }
   
+  P createPeer(Room room, int peerId) {
+    P peer = new Peer._(room, peerId, _signalingChannel, _rtcConfiguration, _protocolProvider);
+    peers[peer.id] = peer;
+    return peer;
+  }
+  
   /**
    * Internal handler for when nwe receive a [SignalingMessage]
    */
@@ -111,29 +117,27 @@ abstract class P2PClient {
       rooms[room.name] = room;
       // TODO(rh): We should create an event for the initial peer list.
       sm.peers.forEach((int peerId) {
-        Peer peer = new Peer._(room, peerId, _signalingChannel, _rtcConfiguration, _protocolProvider);
-        room._peers.add(peer);
-        peers[peer.id] = peer;
+        // Add directly to the list so we do not generate events for the local peer! 
+        room._peers.add(createPeer(room, peerId));
       });
       _onJoinRoomController.add(room);
       return;
     } else if(sm is JoinMessage) {
       // A peer joined a room
       Room room = rooms[sm.room];
-      Peer peer = new Peer._(room, sm.peerId, _signalingChannel, _rtcConfiguration, _protocolProvider);
-      peers[peer.id] = peer;
-      room._addPeer(peer);
+      // Use add method to create onPeerJoin event
+      room._addPeer(createPeer(room, sm.peerId));
       return;
     } else if(sm is LeaveMessage) {
       // A peer left a room
       Room room = rooms[sm.room];
-      Peer peer = peers[sm.peerId];
+      P peer = peers[sm.peerId];
       room._removePeer(peer);
       peers.remove(sm.peerId);
       return;
     }
     
-    final Peer peer = peers[sm.peerId];
+    final P peer = peers[sm.peerId];
     final RtcPeerConnection pc = peer._pc;
     
     if(sm is SessionDescriptionMessage) {
@@ -159,6 +163,10 @@ abstract class P2PClient {
     }
   }
 }
+
+/**
+ * A synchronized version of the P2P client
+ */
 
 /**
  * A WebSocket implementation for a Peer-2-Peer Client

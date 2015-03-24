@@ -9,43 +9,47 @@ part of webrtc_utils.game;
  */
 
 abstract class NamedPlayer {
-  String get name; 
+  String get name;
 }
 
 /**
  * A Player in the game
  */
 
-abstract class Player {
-  final P2PGame game;
+abstract class Player<G extends P2PGame> {
+  final G game;
   
   final int id;
   
   bool get isLocal => this is LocalPlayer;
   
+  bool get isAlive;
+  
   Player(this.game, this.id);
+  
+  void tick(int tickCount);
 }
 
 /**
  * Local Player
  */
 
-class LocalPlayer extends Player {
-  LocalPlayer(P2PGame game, int id) : super(game, id);
+abstract class LocalPlayer<G extends P2PGame> extends Player<G> {
+  LocalPlayer(G game, int id) : super(game, id);
 }
 
 /**
  * A remote player
  */
 
-class RemotePlayer extends Player {
+abstract class RemotePlayer<G extends P2PGame> extends Player<G> {
   /**
    * The peer connection to this player
    */
   
   final Peer peer;
   
-  RemotePlayer(P2PGame game, Peer peer) : super(game, peer.id), this.peer = peer;
+  RemotePlayer(G game, Peer peer) : super(game, peer.id), this.peer = peer;
 }
 
 /**

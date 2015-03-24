@@ -41,14 +41,14 @@ class RawProtocol<M> implements DataChannelProtocol<M> {
    */
   
   RawProtocol(this.channel) {
-    channel.onMessage.listen((MessageEvent ev) => _onMessage(ev.data));
+    channel.onMessage.listen((MessageEvent ev) => handleMessage(ev.data));
   }
   
   /**
    * Internal function that listens for incoming messages
    */
   
-  void _onMessage(M data) {
+  void handleMessage(M data) {
     _onMessageController.add(data);
   }
   
@@ -57,7 +57,7 @@ class RawProtocol<M> implements DataChannelProtocol<M> {
    */
   
   void send(M message) {
-    print('Sending $message to ${channel.label} via ${channel.protocol}');
+    //print('Sending $message to ${channel.label} via ${channel.protocol}');
     channel.send(message);
   }
 }
@@ -85,6 +85,10 @@ abstract class ProtocolProvider {
 
 class DefaultProtocolProvider implements ProtocolProvider {
   DataChannelProtocol provide(Peer peer, RtcDataChannel channel) {
+    if(channel.protocol == 'json') {
+      return new JsonProtocol(channel);
+    }
+    
     return new RawProtocol(channel);
   }
 }
@@ -93,12 +97,12 @@ class DefaultProtocolProvider implements ProtocolProvider {
  * A Protcol that encodes objects from/to json
  */
 
-class JsonProtocol extends StringProtocol {
+class JsonProtocol extends RawProtocol<Object> {
   JsonProtocol(RtcDataChannel channel) : super(channel);
   
   @override
-  void _onMessage(String data) {
-    super._onMessage(JSON.decode(data));
+  void handleMessage(String data) {
+    super.handleMessage(JSON.decode(data));
   }
   
   @override
