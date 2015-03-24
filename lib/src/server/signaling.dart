@@ -105,7 +105,7 @@ class SignalingServer {
     Room room = rooms.putIfAbsent(m['room'], () => new Room(m['room'], m['password']));
     // Send room message with a list of current peers to the peer
     print('Peer $peer join Room ${room.name}');
-    peer.send({'type': 'room', 'name': room.name, 'peers': room.peers.keys.toList(), 'peer': {'id': peer.id}});
+    peer.send({'type': 'room_joined', 'name': room.name, 'peers': room.peers.keys.toList(), 'peer': {'id': peer.id}});
     final Map message = {'type': 'join', 'room': room.name, 'peer': {'id': peer.id}};
     room.peers.values.forEach((Peer otherPeer) {
       otherPeer.send(message);
