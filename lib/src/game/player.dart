@@ -16,16 +16,16 @@ abstract class NamedPlayer {
  * A Player in the game
  */
 
-abstract class Player<G extends P2PGame> {
-  final G game;
+abstract class Player<R extends GameRoom> {
+  final R room;
   
   final int id;
   
   bool get isLocal => this is LocalPlayer;
   
-  bool get isAlive;
+  //bool get isAlive;
   
-  Player(this.game, this.id);
+  Player(this.room, this.id);
   
   void tick(int tickCount);
 }
@@ -34,22 +34,22 @@ abstract class Player<G extends P2PGame> {
  * Local Player
  */
 
-abstract class LocalPlayer<G extends P2PGame> extends Player<G> {
-  LocalPlayer(G game, int id) : super(game, id);
+abstract class LocalPlayer<R extends GameRoom> extends Player<R> {
+  LocalPlayer(R room, int id) : super(room, id);
 }
 
 /**
  * A remote player
  */
 
-abstract class RemotePlayer<G extends P2PGame> extends Player<G> {
+abstract class RemotePlayer<R extends GameRoom, P extends Peer> extends Player<R> {
   /**
    * The peer connection to this player
    */
   
-  final Peer peer;
+  final P peer;
   
-  RemotePlayer(G game, Peer peer) : super(game, peer.id), this.peer = peer;
+  RemotePlayer(R room, P peer) : super(room, peer.id), this.peer = peer;
 }
 
 /**
@@ -121,9 +121,13 @@ abstract class LocalReadyPlayer {
    */
   
   void sendReadyState() {
+    // TODO(rh): Use broadcast send of room
+    // game.send();
+    /*
     game.remotePlayers.forEach((RemoteReadyPlayer remotePlayer) {
       remotePlayer.sendLocalReadyStatus(this);
     });
+    */
   }
 }
 

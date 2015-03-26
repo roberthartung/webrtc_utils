@@ -6,7 +6,7 @@
 
 part of webrtc_utils.client;
 
-class Peer {
+class Peer<C extends P2PClient> {
   // The id of this peer. This ID is assigned by the signaling server
   final int id;
   
@@ -16,10 +16,8 @@ class Peer {
   // The RtcPeerConnection
   final RtcPeerConnection _pc;
   
-  // The signaling channel to send data to
-  final SignalingChannel _signalingChannel;
-  
-  final ProtocolProvider _protocolProvider;
+  // The P2PClient of this peer
+  final C client;
   
   // EventStream when the remote peer adds a stream
   Stream<MediaStreamEvent> get onAddStream => _pc.onAddStream;
@@ -31,39 +29,29 @@ class Peer {
   Stream<RtcDataChannel> get onChannel => _onChannelController.stream;
   StreamController<RtcDataChannel> _onChannelController = new StreamController.broadcast();
   
-  Stream<DataChannelProtocol> get onProtocol => _onProtocolController.stream;
-  StreamController<DataChannelProtocol> _onProtocolController = new StreamController.broadcast();
-  
-  /**
-   * Map of [RtcDataChannel] labels to their protocols
-   * 
-   * TODO(rh): Do we need a map to save channels in the peer?
-   */
-  
-  final Map<String, DataChannelProtocol> channels = {};
-  
   // int _channelId = 1;
   
   /**
    * Internal constructor that is called from the [P2PClient]
    */
   
-  Peer._(this.room, this.id, this._signalingChannel, Map rtcConfiguration, this._protocolProvider, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}]) : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
+  Peer._(this.room, this.id, this.client, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}])
+    : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
     _pc.onNegotiationNeeded.listen((Event ev) { 
-      print('Connection.negotiationNeeded');
+      print('[$this] Connection.negotiationNeeded');
       // Send offer to the other peer
       _pc.createOffer({}).then((RtcSessionDescription desc) {
         _pc.setLocalDescription(desc).then((_) {
-          _signalingChannel.send(new SessionDescriptionMessage(desc, id));
+          client._signalingChannel.send(new SessionDescriptionMessage(room.name, id, desc));
         });
       }).catchError((err) {
-        print('error at offer: $err');
+        print('[$this] Error at offer: $err');
       });
     });
     
     _pc.onIceCandidate.listen((RtcIceCandidateEvent ev) {
       if(ev.candidate != null) {
-        _signalingChannel.send(new IceCandidateMessage(ev.candidate, id));
+        client._signalingChannel.send(new IceCandidateMessage(room.name, id, ev.candidate));
       }
     });
     
@@ -71,29 +59,19 @@ class Peer {
       _notifyChannelCreated(ev.channel);
     });
     
-    /*
-    _pc.onSignalingStateChange.listen((Event ev) {
-      print('[Event] SignalingStateChange: ${_pc.signalingState}');
-    });
-    
-    _pc.onIceConnectionStateChange.listen((Event ev) {
-      print('[Event] IceConnectionStateChange: ${_pc.iceConnectionState} (${_pc.iceGatheringState})');
-    });
-    */
+//    // DEBUG
+//    _pc.onSignalingStateChange.listen((Event ev) {
+//      print('[Event] SignalingStateChange: ${_pc.signalingState}');
+//    });
+//    
+//    _pc.onIceConnectionStateChange.listen((Event ev) {
+//      print('[Event] IceConnectionStateChange: ${_pc.iceConnectionState} (${_pc.iceGatheringState})');
+//    });
   }
   
   void _notifyChannelCreated(RtcDataChannel channel) {
-    print('[$this] Channel created: ${channel.label} with protocol ${channel.protocol}');
+    //print('[$this] Channel created: ${channel.label} with protocol ${channel.protocol}');
     _onChannelController.add(channel);
-    DataChannelProtocol protocol = _protocolProvider.provide(this, channel);
-    if(protocol != null) {
-      channel.onOpen.listen((Event ev) {
-        _onProtocolController.add(protocol);
-      });
-      channels[protocol.channel.label] = protocol;
-    } else {
-      throw "Protocol returned by ProtocolProvider $_protocolProvider should not be null";
-    }
   }
   
   /**
@@ -133,4 +111,50 @@ class Peer {
    */
   
   String toString() => 'Peer#$id';
+}
+
+/**
+ * The [ProtocolPeer] extends [Peer] that by adding a [DataChannelProtocol] on top to the [RtcDataChannel].
+ * It uses the [RtcDataChannel.protocol] property and a [ProtocolProvider] to provide application
+ * specific protocols.
+ */
+
+class ProtocolPeer extends Peer<ProtocolP2PClient> {
+  Stream<DataChannelProtocol> get onProtocol => _onProtocolController.stream;
+  StreamController<DataChannelProtocol> _onProtocolController = new StreamController.broadcast();
+  
+  /**
+   * Map of [RtcDataChannel] labels to their protocols
+   * TODO(rh): Do we actually need a map to save channels?
+   */
+  
+  final Map<String, DataChannelProtocol> channels = {};
+  
+  /**
+   * Library-internal constructor
+   */
+  
+  ProtocolPeer._(room, id, client) : super._(room, id, client);
+  
+  @override
+  void _notifyChannelCreated(RtcDataChannel channel) {
+    super._notifyChannelCreated(channel);
+    DataChannelProtocol protocol = client._protocolProvider.provide(this, channel);
+    print('[$this] Protocol: $protocol');
+    if(protocol != null) {
+      channel.onOpen.listen((Event ev) {
+        print('Channel is open: ${channel.label}');
+        _onProtocolController.add(protocol);
+      });
+      channels[protocol.channel.label] = protocol;
+    } else {
+      throw "Protocol returned by ProtocolProvider ${client._protocolProvider} should not be null";
+    }
+  }
+  
+  /**
+   * Returns a string representation for this ProtocolPeer
+   */
+  
+  String toString() => 'ProtocolPeer#$id';
 }

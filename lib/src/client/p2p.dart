@@ -4,7 +4,7 @@ part of webrtc_utils.client;
  * Basic P2P Client class
  */
 
-abstract class P2PClient<P extends Peer> {
+abstract class P2PClient<R extends Room, P extends Peer> {
   /**
    * The signaling channel to use for establishing a connection
    */
@@ -18,12 +18,6 @@ abstract class P2PClient<P extends Peer> {
   final Map _rtcConfiguration;
   
   /**
-   * Protocol provider
-   */
-  
-  ProtocolProvider _protocolProvider = new DefaultProtocolProvider();
-  
-  /**
    * Local ID assigned by the signaling server 
    */
   
@@ -34,13 +28,7 @@ abstract class P2PClient<P extends Peer> {
    * List of rooms the client is participating in
    */
   
-  final Map<String, Room> rooms = {};
-  
-  /**
-   * List of all other peers
-   */
-  
-  final Map<int, P> peers = {};
+  final Map<String, R> rooms = {};
   
   /**
    * Event stream for when the connection to the signaling server is established
@@ -60,15 +48,15 @@ abstract class P2PClient<P extends Peer> {
    * Event stream when you join a room
    */
   
-  Stream<Room> get onJoinRoom => _onJoinRoomController.stream;
-  final StreamController<Room> _onJoinRoomController = new StreamController.broadcast();
+  Stream<R> get onJoinRoom => _onJoinRoomController.stream;
+  final StreamController<R> _onJoinRoomController = new StreamController.broadcast();
   
   /**
    * Event stream when you leave a room
    */
   
-  Stream<Room> get onLeaveRoom => _onLeaveRoomController.stream;
-  final StreamController<Room> _onLeaveRoomController = new StreamController.broadcast();
+  Stream<R> get onLeaveRoom => _onLeaveRoomController.stream;
+  final StreamController<R> _onLeaveRoomController = new StreamController.broadcast();
   
   /**
    * Constructor
@@ -80,6 +68,87 @@ abstract class P2PClient<P extends Peer> {
   }
   
   /**
+   * Joins a [room] with an optional [password]
+   */
+  
+  void join(String roomName, [String password = null]) {
+    _signalingChannel.send(new JoinRoomMessage(roomName, password, _id));
+  }
+  
+  /**
+   * Internal handler for when new receive a [SignalingMessage]
+   */
+  
+  void _onSignalingMessage(SignalingMessage sm) {
+    // Welcome message
+    if(sm is WelcomeMessage) {
+      _id = sm.peerId;
+      _onConnectController.add(_id);
+      return;
+    } else if(sm is RoomJoinedMessage) {
+      // Local peer joined a room -> create room locally
+      R room = _createRoom(sm.roomName);
+      sm.peers.forEach((int peerId) {
+        P peer = _createPeer(room, peerId);
+        room._peers[peer.id] = peer; 
+      });
+      rooms[room.name] = room;
+      _onJoinRoomController.add(room);
+      return;
+    } else if(sm is JoinMessage) {
+      // A peer joined a room
+      R room = rooms[sm.roomName];
+      P peer = _createPeer(room, sm.peerId);
+      // Use add method to create onPeerJoin event
+      room._addPeer(peer);
+      return;
+    } else if(sm is LeaveMessage) {
+      // A peer left a room
+      R room = rooms[sm.roomName];
+      room._removePeer(sm.peerId);
+      return;
+    } else if(sm is RoomMessage) {
+      // Delegate message handling to room
+      print('Room message received: $sm');
+      R room = rooms[sm.roomName];
+      room._onSignalingMessage(sm);
+    } else {
+      throw "Unknown SignalingMessage received: $sm.";
+    }
+  }
+  
+  /**
+   * Create peer, function declared here instead of in [R] so we can override it easily!
+   */
+  
+  P _createPeer(R room, int peerId) {
+    P peer = new Peer._(room, peerId, this);
+    return peer;
+  }
+  
+  R _createRoom(String name) {
+    return new Room<P, P2PClient>._(this, name);
+  }
+}
+
+/**
+ * A P2PClient that uses a [DataChannelProtocol] on top of a [Peer]s [RtcDataChannel]
+ */
+
+class ProtocolP2PClient<R extends Room> extends P2PClient<R, ProtocolPeer> {
+  /**
+   * Protocol provider
+   */
+  
+  ProtocolProvider _protocolProvider = new DefaultProtocolProvider();
+  
+  /**
+   * Library-Internal constructor. For arguments see [P2PClient]
+   */
+  
+  ProtocolP2PClient(signalingChannel, rtcConfiguration) : super(signalingChannel, rtcConfiguration);
+  
+  /**
    * Adds a protocol provider
    */
   
@@ -87,91 +156,23 @@ abstract class P2PClient<P extends Peer> {
     _protocolProvider = provider;
   }
   
-  /**
-   * Joins a [room] with an optional [password]
-   */
-  
-  void join(String room, [String password = null]) {
-    _signalingChannel.send(new JoinRoomMessage(room, password, _id));
-  }
-  
-  P createPeer(Room room, int peerId) {
-    P peer = new Peer._(room, peerId, _signalingChannel, _rtcConfiguration, _protocolProvider);
-    peers[peer.id] = peer;
-    return peer;
-  }
-  
-  /**
-   * Internal handler for when nwe receive a [SignalingMessage]
-   */
-  
-  void _onSignalingMessage(SignalingMessage sm) {
-    // Get Peer and PeerConnection from SignalMessage's peerId
-    if(sm is WelcomeMessage) {
-      _id = sm.peerId;
-      _onConnectController.add(_id);
-      return;
-    } else if(sm is RoomJoinedMessage) {
-      // Joined a room
-      Room room = new Room._(sm.name);
-      rooms[room.name] = room;
-      // TODO(rh): We should create an event for the initial peer list.
-      sm.peers.forEach((int peerId) {
-        // Add directly to the list so we do not generate events for the local peer! 
-        room._peers.add(createPeer(room, peerId));
-      });
-      _onJoinRoomController.add(room);
-      return;
-    } else if(sm is JoinMessage) {
-      // A peer joined a room
-      Room room = rooms[sm.room];
-      // Use add method to create onPeerJoin event
-      room._addPeer(createPeer(room, sm.peerId));
-      return;
-    } else if(sm is LeaveMessage) {
-      // A peer left a room
-      Room room = rooms[sm.room];
-      P peer = peers[sm.peerId];
-      room._removePeer(peer);
-      peers.remove(sm.peerId);
-      return;
-    }
-    
-    final P peer = peers[sm.peerId];
-    final RtcPeerConnection pc = peer._pc;
-    
-    if(sm is SessionDescriptionMessage) {
-      RtcSessionDescription desc = sm.description;
-      if(desc.type == 'offer') {
-        pc.setRemoteDescription(desc).then((_) {
-          pc.createAnswer().then((RtcSessionDescription answer) {
-            pc.setLocalDescription(answer).then((_) {
-              _signalingChannel.send(new SessionDescriptionMessage(answer, peer.id));
-            });
-          });
-        });
-      } else {
-        pc.setRemoteDescription(desc);
-      }
-    } else if(sm is IceCandidateMessage) {
-      pc.addIceCandidate(sm.candidate, () {
-      }, (error) {
-        print('[ERROR] Unable to add IceCandidateMessage: $error');
-      });
-    } else {
-      throw "Unknown SignalingMessage received: $sm.";
-    }
+  ProtocolPeer _createPeer(R room, int peerId) {
+    return new ProtocolPeer._(room, peerId, this);
   }
 }
 
 /**
- * A synchronized version of the P2P client
+ * A WebSocket implementation for a P2P client
  */
+
+class WebSocketP2PClient<R extends Room, P extends Peer> extends P2PClient<R, P> {
+  WebSocketP2PClient(String webSocketUrl, Map _rtcConfiguration) : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
+}
 
 /**
- * A WebSocket implementation for a Peer-2-Peer Client
+ * A WebSocket implementation for a protocol based P2P client
  */
 
-class WebSocketP2PClient extends P2PClient {
-  WebSocketP2PClient(String webSocketUrl, Map _rtcConfiguration) : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
+class WebSocketProtocolP2PClient<R extends Room> extends ProtocolP2PClient<R> {
+  WebSocketProtocolP2PClient(String webSocketUrl, Map _rtcConfiguration) : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
 }

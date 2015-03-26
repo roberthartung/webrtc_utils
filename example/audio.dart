@@ -38,11 +38,11 @@ void main() {
     // Loop through existing peers
     room.peers.forEach(_onPeerAdded);
     
-    room.onLeave.listen((Peer peer) {
+    room.onPeerLeave.listen((Peer peer) {
       print('Peer $peer left room ${room.name}');
     });
     
-    room.onJoin.listen((Peer peer) {
+    room.onPeerJoin.listen((Peer peer) {
       print('Peer $peer joined room ${room.name}');
       _onPeerAdded(peer);
     });

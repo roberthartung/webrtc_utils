@@ -5,11 +5,14 @@
 library webrtc_utils.game;
 
 import 'dart:html';
-import 'client.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'client.dart';
+
+export 'client.dart';
 
 part 'src/game/p2p.dart';
-part 'src/game/communication.dart';
+part 'src/game/room.dart';
 part 'src/game/player.dart';
-
-// TODO(rh): SynchornizedGame
+part 'src/game/communication.dart';
+part 'src/game/synchronized.dart';

@@ -70,7 +70,7 @@ void main() {
   client.onJoinRoom.listen((Room room) {
     print('Joined room');
     room.peers.forEach(_peerJoined);
-    room.onJoin.listen(_peerJoined);
+    room.onPeerJoin.listen(_peerJoined);
   });
   
   /*

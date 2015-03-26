@@ -64,7 +64,7 @@ class SignalingServer {
         case "rtc_ice_candidate" :
           // Get target from message (map)
           int targetPeerId = m['peer']['id'];
-          // TODO(rh): How to prevent the peer from sending wrong peer IDs? Can we do that even?
+          // TODO(rh): How to prevent the peer from sending wrong peer IDs? Can we even do that?
           // Check if the peer exists
           if(peers.containsKey(targetPeerId)) {
             // When sending the peer, it is the source 
@@ -83,7 +83,7 @@ class SignalingServer {
         print('Peer $peer left $room');
         room.peers.remove(peer.id);
         peers.remove(peer.id);
-        final Map message = {'type': 'leave', 'room': room.name, 'peer': {'id': peer.id}};
+        final Map message = {'type': 'leave', 'room': {'name': room.name}, 'peer': {'id': peer.id}};
         // Send LeaveMessage to all remaining clients
         room.peers.values.forEach((Peer otherPeer) {
           otherPeer.send(message);
@@ -102,11 +102,11 @@ class SignalingServer {
    */
   
   void _joinRoom(Peer peer, Map m) {
-    Room room = rooms.putIfAbsent(m['room'], () => new Room(m['room'], m['password']));
+    Room room = rooms.putIfAbsent(m['room']['name'], () => new Room(m['room']['name'], m['password']));
     // Send room message with a list of current peers to the peer
     print('Peer $peer join Room ${room.name}');
-    peer.send({'type': 'room_joined', 'name': room.name, 'peers': room.peers.keys.toList(), 'peer': {'id': peer.id}});
-    final Map message = {'type': 'join', 'room': room.name, 'peer': {'id': peer.id}};
+    peer.send({'type': 'room_joined', 'room': {'name': room.name}, 'peers': room.peers.keys.toList(), 'peer': {'id': peer.id}});
+    final Map message = {'type': 'join', 'room': {'name': room.name}, 'peer': {'id': peer.id}};
     room.peers.values.forEach((Peer otherPeer) {
       otherPeer.send(message);
     });

@@ -118,7 +118,7 @@ void main() {
   
   client.onJoinRoom.listen((final Room room) {
     room.peers.forEach(_onPeerJoined);
-    room.onJoin.listen(_onPeerJoined);
+    room.onPeerJoin.listen(_onPeerJoined);
     
     document.onDragEnter.listen((MouseEvent ev) {
       
