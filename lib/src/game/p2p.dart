@@ -27,7 +27,13 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer> extends We
     });
   }
   
-  GameRoom createGameRoom(Room room);/* {
+  GameRoom createGameRoom(Room room);
+  
+  L createLocalPlayer(GameRoom room, int id);
+  
+  R createRemotePlayer(GameRoom room, ProtocolPeer peer);
+  
+  /* {
     // return new GameRoom<P2PGame, L,R>(this, room);
   }*/
 }

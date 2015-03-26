@@ -74,11 +74,12 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
   final Room _room;
   
   GameRoom(this.game, this._room) {
-    // TODO(rh): Should we use game.createLocalPlayer() here?
-    _localPlayer = createLocalPlayer(game.id);
+    // _localPlayer = createLocalPlayer(game.id);
+    _localPlayer = game.createLocalPlayer(this, game.id);
     _playerJoined(_localPlayer);
     _room.peers.forEach((Peer peer) {
-      R player = createRemotePlayer(peer);
+      // R player = createRemotePlayer(peer);
+      R player = game.createRemotePlayer(this, peer);
       peerToPlayer[peer] = player;
       _playerJoined(player);
     });
@@ -86,8 +87,8 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
     _getGameOwner();
     // When a new player joins
     _room.onPeerJoin.listen((Peer peer) {
-      // TODO(rh): Should we use game.createRemotePlayer() here?
-      R player = createRemotePlayer(peer);
+      // R player = createRemotePlayer(peer);
+      R player = game.createRemotePlayer(this, peer);
       peerToPlayer[peer] = player;
       _playerJoined(player);
     });
@@ -156,23 +157,23 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
    * Creates the [LocalPlayer] object using the generic [L] parameter
    */
   
-  L createLocalPlayer(int localId);
+  // L createLocalPlayer(int localId);
   
   /**
    * Creates the [RemotePlayer] object using the generic [R] parameter
    */
   
-  R createRemotePlayer(Peer peer);
+  // R createRemotePlayer(Peer peer);
 }
 
 /**
  * Synchronized version of a game room
  */
 
-abstract class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer> extends GameRoom<G,L,R> {
+class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer> extends GameRoom<G,L,R> {
   Timer _pingTimer = null;
   
-  int get globalTime => 0;
+  double get globalTime => isOwner ? window.performance.now() : window.performance.now();
   
   Map<R, JsonProtocol> _pingablePlayers = {};
   
@@ -192,13 +193,16 @@ abstract class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Syn
       _startSynchronizationTimer();
     }
     
+    // Loop through existing players in the channel
     remotePlayers.forEach(_onPlayerJoined);
-    // Create channel only for new players!
+    
     onPlayerJoin.listen((R remotePlayer) {
+      // Create channel only for players that join after us.
       _onPlayerJoined(remotePlayer);
       remotePlayer.peer.createChannel('synchronization', {'protocol': 'json'});
     });
     
+    // Remove Player from list and cancel timer if there are no more RemotePlayers
     onPlayerLeave.listen((R remotePlayer) {
       _pingablePlayers.remove(remotePlayer);
       
@@ -208,6 +212,10 @@ abstract class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Syn
       }
     });
   }
+  
+  /**
+   * Received a message from the synchronization channel
+   */
   
   void _onSynchronizationProtocolMessage(JsonProtocol protocol, Map data) {
     if(data.containsKey('ping')) {
@@ -223,15 +231,15 @@ abstract class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Syn
     }
   }
   
+  /**
+   * A RemotePlayer [R] joined (existing ones and new ones!)
+   */
+  
   void _onPlayerJoined(R remotePlayer) {
     print('[$this] Player $remotePlayer joined');
     
-    remotePlayer.peer.onChannel.listen((RtcDataChannel channel) {
-      channel.onMessage.listen((MessageEvent ev) {
-        print('Message: ${ev.data}');
-      });
-    });
-    
+    // Wait for synchronization protocol
+    // TODO(rh): Can we cancel the subscription afterwards?
     remotePlayer.peer.onProtocol.listen((DataChannelProtocol protocol) {
       if(protocol is JsonProtocol && protocol.channel.label == 'synchronization') {
         _pingablePlayers[remotePlayer] = protocol;
@@ -240,9 +248,17 @@ abstract class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Syn
     });
   }
   
+  /**
+   * Start the ping timer
+   */
+  
   void _startSynchronizationTimer() {
     _pingTimer = new Timer.periodic(new Duration(seconds: 1), _ping);
   }
+  
+  /**
+   * Ping timer tick
+   */
   
   void _ping(Timer t) {
     // TODO(rh): Use _room.send()?
@@ -251,9 +267,5 @@ abstract class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Syn
     _pingablePlayers.forEach((R remotePlayer, JsonProtocol protocol) {
       protocol.send(pingMessage);
     });
-    /*remotePlayers.forEach((R remotePlayer) {
-      // remotePlayer.peer.channels['synchronization'].send(pingMessage);
-    });
-    */
   }
 }

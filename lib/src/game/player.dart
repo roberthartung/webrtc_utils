@@ -87,7 +87,9 @@ abstract class LocalReadyPlayer {
    * Abstract getter for the [P2PGame]
    */
   
-  P2PGame get game;
+  // P2PGame get game;
+  
+  GameRoom get room;
   
   /**
    * Abstract getter for [StreamController] of ready events 

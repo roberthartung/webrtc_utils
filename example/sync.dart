@@ -52,7 +52,11 @@ import 'dart:html';
 
 final String webSocketUrl = 'ws://${window.location.hostname}:28080';
 
-class MyLocalPlayer extends SynchronizedLocalPlayer<MySynchronizedRoom> {
+/**
+ * An example of a local player
+ */
+
+class MyLocalPlayer extends SynchronizedLocalPlayer {
   MyLocalPlayer(SynchronizedGameRoom room, int id) : super(room, id);
   
   void tick(int tickCount) {
@@ -60,7 +64,11 @@ class MyLocalPlayer extends SynchronizedLocalPlayer<MySynchronizedRoom> {
   }
 }
 
-class MyRemotePlayer extends SynchronizedRemotePlayer<MySynchronizedRoom> {
+/**
+ * An example of a remote player
+ */
+
+class MyRemotePlayer extends SynchronizedRemotePlayer {
   MyRemotePlayer(SynchronizedGameRoom room, Peer peer) : super(room, peer);
   
   void tick(int tickCount) {
@@ -68,36 +76,37 @@ class MyRemotePlayer extends SynchronizedRemotePlayer<MySynchronizedRoom> {
   }
 }
 
-class MySynchronizedRoom extends SynchronizedGameRoom<SynchronizedGame,MyLocalPlayer,MyRemotePlayer> {
-  MySynchronizedRoom(SynchronizedGame game, Room room) : super(game, room);
-  
-  @override
-  MyLocalPlayer createLocalPlayer(int localId) {
-    return new MyLocalPlayer(this, localId);
-  }
-  
-  @override
-  MyRemotePlayer createRemotePlayer(Peer peer) {
-    return new MyRemotePlayer(this, peer);
-  }
-}
+/**
+ * A synchronized game example. Overrides only the createGameRoom method so
+ * you can create a game specific room
+ */
 
-class SynchronizedGame extends SynchronizedP2PGame<MyLocalPlayer,MyRemotePlayer>/* with AlivePlayerGame<MyLocalPlayer, MyRemotePlayer>*/ {
+class SynchronizedGame extends SynchronizedP2PGame<MyLocalPlayer,MyRemotePlayer>
+  /* with AlivePlayerGame<MyLocalPlayer, MyRemotePlayer>*/ {
   SynchronizedGame(String webSocketUrl, Map rtcConfiguration)
     : super(webSocketUrl, rtcConfiguration);
   
-  SynchronizedGameRoom createGameRoom(Room room) {
-    return new MySynchronizedRoom(this, room);
+  @override
+  MyLocalPlayer createLocalPlayer(GameRoom room, int localId) {
+    return new MyLocalPlayer(room, localId);
+  }
+  
+  @override
+  MyRemotePlayer createRemotePlayer(GameRoom room, Peer peer) {
+    return new MyRemotePlayer(room, peer);
   }
 }
 
+/**
+ * Main method that will create the game ([SynchronizedGame]) and
+ * join a room once connected to the signaling server
+ */
+
 void main() {
   final SynchronizedP2PGame game = new SynchronizedGame(webSocketUrl, rtcConfiguration);
-  // final P2PClient client = new WebSocketP2PClient(webSocketUrl, rtcConfiguration);
   
   game.onConnect.listen((_) {
     print('Connected');
     game.join('room1');
-    //game.join('room2');
   });
 }
