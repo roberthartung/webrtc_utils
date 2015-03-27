@@ -117,7 +117,8 @@ class ProtocolRoom extends Room<ProtocolPeer, ProtocolP2PClient> {
     peers.forEach((ProtocolPeer peer) {
       final DataChannelProtocol protocol = peer.protocols[channelLabel];
       if(protocol != null && protocol.channel.readyState == 'open') {
-        protocol.send(dynamic);
+        print('[$this] Sending $message to $peer/$channelLabel via $protocol');
+        protocol.send(message);
       }
     });
   }

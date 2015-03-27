@@ -47,6 +47,7 @@
 
 import 'package:webrtc_utils/game.dart';
 import 'dart:html';
+import 'dart:math';
 
 final String webSocketUrl = 'ws://${window.location.hostname}:28080';
 
@@ -59,8 +60,24 @@ class Circle {
   
   Circle(this.middle);
   
-  void tick() {
-    
+  int _opacity = 100;
+  
+  int _radius = 0;
+  
+  bool tick() {
+    _opacity -= 4;
+    _radius += 1;
+    return _opacity <= 0;
+  }
+  
+  void render(CanvasRenderingContext2D ctx) {
+    ctx.save();
+    ctx.fillStyle = 'red';
+    ctx.globalAlpha = _opacity / 100.0;
+    ctx.beginPath();
+    ctx.arc(middle.x, middle.y, _radius, 0, 2 * PI);
+    ctx.fill();
+    ctx.restore();
   }
 }
 
@@ -81,13 +98,21 @@ abstract class DemoPlayer {
   }
   
   void _click(Point p) {
-    new Circle(p);
+    circles.add(new Circle(p));
   }
   
-  void tick(int tick) {
+  void tick(double time) {
+    List<Circle> finishedCircles = [];
     circles.forEach((Circle c) {
-      c.tick();
+      if(c.tick()) {
+        finishedCircles.add(c);
+      }
     });
+    circles.removeWhere((Circle c) => finishedCircles.contains(c));
+  }
+  
+  void render(CanvasRenderingContext2D ctx) {
+    circles.forEach((Circle c) => c.render(ctx));
   }
 }
 
@@ -117,6 +142,26 @@ class MyRemotePlayer extends SynchronizedRemotePlayer with DemoPlayer {
   }
 }
 
+/*
+class MyGameProtocol extends JsonProtocol {
+  MyGameProtocol(RtcDataChannel channel) : super(channel);
+}
+*/
+
+/**
+ * Protocol provider that handles message serialization
+ */
+
+class MyProtocolProvider extends DefaultProtocolProvider {
+  DataChannelProtocol provide(Peer peer, RtcDataChannel channel) {
+    if(channel.protocol == 'game') {
+      return new JsonProtocol(channel);
+    }
+    
+    return super.provide(peer, channel);
+  }
+}
+
 /**
  * A synchronized game example. Overrides only the createGameRoom method so
  * you can create a game specific room
@@ -124,21 +169,34 @@ class MyRemotePlayer extends SynchronizedRemotePlayer with DemoPlayer {
 
 class SynchronizedGame extends SynchronizedP2PGame<MyLocalPlayer,MyRemotePlayer>
   /* with AlivePlayerGame<MyLocalPlayer, MyRemotePlayer>*/ {
+  
+  CanvasElement canvas;
+  
+  CanvasRenderingContext2D ctx;
+  
   SynchronizedGame(String webSocketUrl, Map rtcConfiguration)
     : super(webSocketUrl, rtcConfiguration) {
+    setProtocolProvider(new MyProtocolProvider());
+    
+    canvas = querySelector('#canvas');
+    ctx = canvas.getContext('2d');
     startAnimation();
   }
   
   void _tick(double localTime) {
-    /*
-    rooms.forEach((String name, SynchronizedGameRoom room) {
-      print('Room $room');
+    gameRooms.forEach((SynchronizedGameRoom room) {
       room.tick(localTime);
     });
-    */
-    // Convert local to global time
-    // Execute events for all players
-    // regular rendering stuff
+    
+    ctx.clearRect(0,0, canvas.width, canvas.height);
+    gameRooms.forEach((SynchronizedGameRoom room) {
+      room.players.forEach((Player player) {
+        player.tick(localTime);
+        if(player is DemoPlayer) {
+          (player as DemoPlayer).render(ctx);
+        }
+      });
+    });
     
     startAnimation();
   }
@@ -164,6 +222,19 @@ class SynchronizedGame extends SynchronizedP2PGame<MyLocalPlayer,MyRemotePlayer>
  */
 
 void main() {
+  /*
+  MessageQueue queue = new MessageQueue<String>();
+  queue.add(5, '5');
+  queue.add(4, '4');
+  queue.add(6, '6');
+  queue.add(5, '5');
+  print(queue.poll());
+  print(queue.poll());
+  print(queue.poll());
+  print(queue.poll());
+  print(queue.poll());
+  */
+  
   final SynchronizedP2PGame game = new SynchronizedGame(webSocketUrl, rtcConfiguration);
   
   game.onConnect.listen((_) {

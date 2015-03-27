@@ -27,7 +27,7 @@ abstract class Player<R extends GameRoom> {
   
   Player(this.room, this.id);
   
-  void tick(int tickCount);
+  void tick(double time);
 }
 
 /**
@@ -42,14 +42,38 @@ abstract class LocalPlayer<R extends GameRoom> extends Player<R> {
  * A remote player
  */
 
-abstract class RemotePlayer<R extends GameRoom, P extends Peer> extends Player<R> {
+abstract class RemotePlayer<R extends GameRoom, P extends ProtocolPeer> extends Player<R> {
   /**
    * The peer connection to this player
    */
   
   final P peer;
   
-  RemotePlayer(R room, P peer) : super(room, peer.id), this.peer = peer;
+  Completer<DataChannelProtocol> _gameChannelCompleter = new Completer();
+  
+  DataChannelProtocol _gameProtocol;
+  
+  Stream get onGameMessage => _onGameMessageController.stream;
+  StreamController _onGameMessageController = new StreamController.broadcast();
+  
+  RemotePlayer(R room, P peer) : super(room, peer.id), this.peer = peer {
+    // Create game channel for each remote player with protocol 'game'
+    peer.onProtocol.firstWhere((DataChannelProtocol protocol) => protocol.channel.label == 'game').then((DataChannelProtocol protocol) {
+      _gameProtocol = protocol;
+      _gameChannelCompleter.complete(_gameProtocol);
+      _gameChannelCompleter = null;
+      // Pipe messages from game protocol to game message stream
+      _onGameMessageController.addStream(_gameProtocol.onMessage);
+    });
+  }
+  
+  Future<DataChannelProtocol> getGameChannel() {
+    if(_gameChannelCompleter == null) {
+      return new Future.value(_gameProtocol);
+    }
+    
+    return _gameChannelCompleter.future;
+  }
 }
 
 abstract class SynchronizedRemotePlayer /*<R extends SynchronizedGameRoom>*/ extends RemotePlayer<SynchronizedGameRoom, ProtocolPeer> {

@@ -7,6 +7,7 @@ library webrtc_utils.game;
 import 'dart:html';
 import 'dart:async';
 import 'client.dart';
+import 'dart:collection';
 
 export 'client.dart';
 

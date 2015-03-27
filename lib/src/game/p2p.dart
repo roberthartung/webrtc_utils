@@ -11,7 +11,20 @@ part of webrtc_utils.game;
  * - cleanup for disconnect/room change: override [cleanup] and call super.clean() if you want to extend
  */
 
-abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer> extends WebSocketProtocolP2PClient {
+abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends GameRoom> extends WebSocketProtocolP2PClient {
+  /**
+   * List of 
+   */
+  
+  final List<G> gameRooms = [];
+  
+  /**
+   * Stream of GameRooms [G] that have been created for every room 
+   */
+  
+  Stream<G> get onGameRoomCreated => _onGameRoomCreatedController.stream;
+  StreamController<G> _onGameRoomCreatedController = new StreamController.broadcast();
+  
   /**
    * Constructor, creates a new WebSocketP2PClient with the given WebSocket URL and rtcConfiguration
    */
@@ -19,10 +32,15 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer> extends We
   P2PGame(String webSocketUrl,
       Map rtcConfiguration)
     : super(webSocketUrl, rtcConfiguration) {
-    onJoinRoom.listen(createGameRoom);
+    onJoinRoom.listen((Room room) {
+      G gameRoom = createGameRoom(room);
+      gameRooms.add(gameRoom);
+      _onGameRoomCreatedController.add(gameRoom);
+    });
     
+    // When disconnecting cleanup rooms?
     onDisconnect.listen((int reason) {
-      print('P2PGame disconnected from signaling channel. Reason: $reason');
+      // print('P2PGame disconnected from signaling channel. Reason: $reason');
       // cleanup();
     });
   }
@@ -39,7 +57,7 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer> extends We
 }
 
 abstract class SynchronizedP2PGame<L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer>
-    extends P2PGame<L, R> {
+    extends P2PGame<L, R, SynchronizedGameRoom> {
   SynchronizedP2PGame(String webSocketUrl, Map rtcConfiguration)
       : super(webSocketUrl, rtcConfiguration);
 

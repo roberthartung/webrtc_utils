@@ -91,6 +91,9 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
       R player = game.createRemotePlayer(this, peer);
       peerToPlayer[peer] = player;
       _playerJoined(player);
+      // Create channel here and not in RemotePlayer constructor because we only want create channels
+      // to be created that joined after us!
+      peer.createChannel('game', {'protocol': 'game'});
     });
     // When a player leaves
     room.onPeerLeave.listen((Peer peer) {
@@ -146,44 +149,100 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
     // can compare the current game owner with the player that left the game
     _onPlayerLeaveStreamController.add(player);
     
-    // If Player was game owner
+    // If Player was game owner reset gameowner and elect new one
     if(_gameOwner == player) {
       _gameOwner = null;
       _getGameOwner();
     }
   }
-  
+}
+
+/**
+ * A Message Queue for the [SynchronizedGameRoom]
+ */
+
+class MessageQueue<M> {
   /**
-   * Creates the [LocalPlayer] object using the generic [L] parameter
+   * Use a SplayTreeMap so we can sort by time
    */
   
-  // L createLocalPlayer(int localId);
+  SplayTreeMap<double, Queue<M>> queue = new SplayTreeMap();
   
   /**
-   * Creates the [RemotePlayer] object using the generic [R] parameter
+   * Getter if this queue is empty
    */
   
-  // R createRemotePlayer(Peer peer);
+  bool get isEmpty => queue.isEmpty;
+  
+  /**
+   * Current message
+   */
+  
+  /*
+  Set<M> _current = null;
+  Set<M> get current => _current;
+  */
+  
+  /**
+   * Adds a message at the given point in time
+   */
+  
+  void add(double time, M message) {
+    queue.putIfAbsent(time, () => new Queue<M>()).add(message);
+  }
+  
+  /**
+   * Retrieve and remove the element, throws StateError if this queue is empty
+   */
+  
+  M poll() {
+    if(queue.isEmpty) {
+      throw new StateError("MessageQueue is empty");
+    }
+    final double key =  queue.firstKey();
+    // Get first Queue
+    Queue<M> head = queue[key];
+    // Remove first
+    M first = head.removeFirst();
+    // Remove head if queue is empty
+    if(head.isEmpty) {
+      queue.remove(key);
+    }
+    return first;
+  }
+  
+  /**
+   * Peek at the first element but do not remove it
+   */
+  
+  M peek() {
+    if(queue.isEmpty) {
+      throw new StateError("MessageQueue is empty");
+    }
+    return queue[queue.firstKey()].first;
+  }
 }
 
 /**
  * Synchronized version of a game room
  */
 
-class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer> extends GameRoom<G,L,R> {
+class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer>
+extends GameRoom<G,L,R> {
   Timer _pingTimer = null;
   
   double get globalTime => isOwner ? window.performance.now() : window.performance.now();
   
   int _maxPing = null;
   
-  int get maxPing => _maxPing;
+  int get maxPing => _maxPing == null ? 0 : _maxPing;
   
   Map<R, JsonProtocol> _pingablePlayers = {};
   
-  
   Stream get onSynchronizedMessage => _onSynchronizedMessageController.stream;
   StreamController _onSynchronizedMessageController = new StreamController.broadcast();
+  
+  MessageQueue _messageQueue = new MessageQueue();
   
   /**
    * Constructor of the [SynchronizedGameRoom] class
@@ -192,7 +251,6 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
   SynchronizedGameRoom(G game, ProtocolRoom room) : super(game, room) {
     // Loop through existing players in the channel
     remotePlayers.forEach(_onPlayerJoined);
-    
     onPlayerJoin.listen((R remotePlayer) {
       _onPlayerJoined(remotePlayer);
       // Create channel only for players that join after us.
@@ -214,16 +272,22 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
    */
   
   void _onPlayerJoined(R remotePlayer) {
+    remotePlayer.getGameChannel().then((DataChannelProtocol gameChannel) {
+      print('[$this] GameChannel: $gameChannel');
+      // TODO(rh): Take time from SynchronizedMessage class
+      gameChannel.onMessage.listen((message) => _synchronizeMessage(window.performance.now(), message));
+    });
+
     if(_pingTimer == null) {
       _startSynchronizationTimer();
     }
-
-    print('[$this] Player $remotePlayer joined');
-    remotePlayer.peer.onProtocol.listen((DataChannelProtocol protocol) {
-      if (protocol is JsonProtocol && protocol.channel.label == 'synchronization') {
-        _pingablePlayers[remotePlayer] = protocol;
-        remotePlayer._startSynchronization(protocol);
-      }
+    
+    // print('[$this] Player $remotePlayer joined');
+    remotePlayer.peer.onProtocol
+    .firstWhere((DataChannelProtocol protocol) => (protocol is JsonProtocol && protocol.channel.label == 'synchronization'))
+    .then((DataChannelProtocol protocol) {
+      _pingablePlayers[remotePlayer] = protocol;
+      remotePlayer._startSynchronization(protocol);
     });
   }
   
@@ -256,16 +320,29 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
     });
     
     if(_maxPing != null) {
-      // TODO(rh): Should we provide a onMaxPing stream?
-      print('MaxPing: $_maxPing');
+      // TODO(rh): Should we provide an onMaxPing stream?
+      // print('MaxPing: $_maxPing');
     }
   }
   
+  void _synchronizeMessage(double time, dynamic message) {
+    _messageQueue.add(time, message);
+  }
+  
   void synchronizeMessage(dynamic message) {
-    
+    // print('[$this] synchronizeMessage: $message');
+    room.sendToProtocol('game', message);
+    _synchronizeMessage(window.performance.now() + maxPing * 2, message);
   }
   
   void tick(double localTime) {
-    print('[$this] tick@$localTime');
+    double globalTime = localTime;
+    // If there are messages in the queue
+    // Deliver all messages that have smaller or equal global time
+    while(!_messageQueue.isEmpty && _messageQueue.queue.firstKey() <= globalTime) {
+      _onSynchronizedMessageController.add(_messageQueue.poll());
+    }
+    
+    // print('[$this] tick@$localTime');
   }
 }
