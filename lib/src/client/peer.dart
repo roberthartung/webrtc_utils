@@ -29,6 +29,13 @@ class Peer<C extends P2PClient> {
   Stream<RtcDataChannel> get onChannel => _onChannelController.stream;
   StreamController<RtcDataChannel> _onChannelController = new StreamController.broadcast();
   
+  /**
+   * Map of [RtcDataChannel] labels to their channels
+   * TODO(rh): Do we actually need a map to save protocols?
+   */
+  
+  final Map<String, RtcDataChannel> channels = {};
+  
   // int _channelId = 1;
   
   /**
@@ -70,6 +77,10 @@ class Peer<C extends P2PClient> {
   }
   
   void _notifyChannelCreated(RtcDataChannel channel) {
+    channels[channel.label] = channel;
+    channel.onClose.listen((Event ev) {
+      channels.remove(channel.label);
+    });
     //print('[$this] Channel created: ${channel.label} with protocol ${channel.protocol}');
     _onChannelController.add(channel);
   }
@@ -125,10 +136,10 @@ class ProtocolPeer extends Peer<ProtocolP2PClient> {
   
   /**
    * Map of [RtcDataChannel] labels to their protocols
-   * TODO(rh): Do we actually need a map to save channels?
+   * TODO(rh): Do we actually need a map to save protocols?
    */
   
-  final Map<String, DataChannelProtocol> channels = {};
+  final Map<String, DataChannelProtocol> protocols = {};
   
   /**
    * Library-internal constructor
@@ -146,7 +157,7 @@ class ProtocolPeer extends Peer<ProtocolP2PClient> {
         print('Channel is open: ${channel.label}');
         _onProtocolController.add(protocol);
       });
-      channels[protocol.channel.label] = protocol;
+      protocols[protocol.channel.label] = protocol;
     } else {
       throw "Protocol returned by ProtocolProvider ${client._protocolProvider} should not be null";
     }

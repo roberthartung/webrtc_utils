@@ -92,12 +92,33 @@ class Room<P extends Peer, C extends P2PClient> {
     _onPeerLeaveController.add(_peers.remove(peerId));
   }
   
-  /*
-  TODO(rh): Broadcast data
-  void send(data) {
+  /**
+   * Sends a message to all peers on a specific channel
+   */
+  
+  void sendToChannel(String channelLabel, dynamic message) {
     peers.forEach((Peer peer) {
-      
+      final RtcDataChannel channel = peer.channels[channelLabel];
+      if(channel != null && channel.readyState == 'open') {
+        channel.send(message);
+      }
     });
   }
-  */
+}
+
+/**
+ * A room with ProtocolPeers
+ */
+
+class ProtocolRoom extends Room<ProtocolPeer, ProtocolP2PClient> {
+  ProtocolRoom._(client, name) : super._(client, name);
+  
+  void sendToProtocol(String channelLabel, dynamic message) {
+    peers.forEach((ProtocolPeer peer) {
+      final DataChannelProtocol protocol = peer.protocols[channelLabel];
+      if(protocol != null && protocol.channel.readyState == 'open') {
+        protocol.send(dynamic);
+      }
+    });
+  }
 }

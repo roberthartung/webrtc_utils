@@ -52,6 +52,54 @@ abstract class RemotePlayer<R extends GameRoom, P extends Peer> extends Player<R
   RemotePlayer(R room, P peer) : super(room, peer.id), this.peer = peer;
 }
 
+abstract class SynchronizedRemotePlayer /*<R extends SynchronizedGameRoom>*/ extends RemotePlayer<SynchronizedGameRoom, ProtocolPeer> {
+  SynchronizedRemotePlayer(SynchronizedGameRoom room, ProtocolPeer peer)
+      : super(room, peer) {
+    // Wait for synchronization protocol
+    // TODO(rh): Can we cancel the subscription afterwards?
+  }
+  
+  double _timeDifference = null;
+  double get timeDifference => _timeDifference;
+  
+  double _ping = null;
+  double get ping => _ping;
+  
+  void _startSynchronization(JsonProtocol protocol) {
+    protocol.onMessage.listen((Object message) => _onSynchronizationProtocolMessage(protocol, message));
+  }
+  
+  /**
+   * Received a message from the synchronization channel
+   */
+  
+  void _onSynchronizationProtocolMessage(JsonProtocol protocol, Map data) {
+    if(data.containsKey('ping')) {
+      _timeDifference = window.performance.now() - data['ping'];
+      // if diff is smaller than "0"
+      protocol.send({'pong': data['ping']});
+    } else if(data.containsKey('pong')) {
+      // Calculate ping
+      double rtt = window.performance.now() - data['pong'];
+      if(_ping == null) {
+        _ping = rtt / 2;
+      } else {
+        _ping = (rtt / 2) * .5 + _ping * .5;
+      }
+    }
+  }
+}
+
+abstract class SynchronizedLocalPlayer /*<R extends SynchronizedGameRoom>*/ extends LocalPlayer<SynchronizedGameRoom> {
+  /**
+   * When executing events locally, they are scheduled with a delay
+   */
+  
+  SynchronizedLocalPlayer(SynchronizedGameRoom room, int id) : super(room, id) {
+    
+  }
+}
+
 /**
  * A Mixin that can be used to have a ready state within a player, use this for both the remote and local player
  */
@@ -180,6 +228,7 @@ abstract class RemoteReadyPlayer {
  * A pingable player (measures time in ms) - should be used on [RemotePlayer]s only
  */
 
+@deprecated
 abstract class PingablePlayer {
   /**
    * Timer to used for periodic pinging

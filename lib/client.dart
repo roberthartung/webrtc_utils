@@ -15,6 +15,7 @@ part 'src/client/protocol.dart';
 
 part 'src/client/signaling/channel.dart';
 part 'src/client/signaling/websocket.dart';
+part 'src/client/signaling/polling.dart';
 
 part 'src/client/converter/message.dart';
 

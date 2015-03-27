@@ -135,7 +135,7 @@ abstract class P2PClient<R extends Room, P extends Peer> {
  * A P2PClient that uses a [DataChannelProtocol] on top of a [Peer]s [RtcDataChannel]
  */
 
-class ProtocolP2PClient<R extends Room> extends P2PClient<R, ProtocolPeer> {
+class ProtocolP2PClient<R extends ProtocolRoom> extends P2PClient<R, ProtocolPeer> {
   /**
    * Protocol provider
    */
@@ -159,6 +159,18 @@ class ProtocolP2PClient<R extends Room> extends P2PClient<R, ProtocolPeer> {
   ProtocolPeer _createPeer(R room, int peerId) {
     return new ProtocolPeer._(room, peerId, this);
   }
+  
+  ProtocolRoom _createRoom(String name) {
+    return new ProtocolRoom._(this, name);
+  }
+}
+
+/**
+ * A WebSocket implementation for a P2P client
+ */
+
+class PollingP2PClient<R extends Room, P extends Peer> extends P2PClient<R, P> {
+  PollingP2PClient(String pollingUrl, Map _rtcConfiguration) : super(new PollingSignalingChannel(pollingUrl), _rtcConfiguration);
 }
 
 /**
@@ -173,6 +185,6 @@ class WebSocketP2PClient<R extends Room, P extends Peer> extends P2PClient<R, P>
  * A WebSocket implementation for a protocol based P2P client
  */
 
-class WebSocketProtocolP2PClient<R extends Room> extends ProtocolP2PClient<R> {
+class WebSocketProtocolP2PClient<R extends ProtocolRoom> extends ProtocolP2PClient<R> {
   WebSocketProtocolP2PClient(String webSocketUrl, Map _rtcConfiguration) : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
 }

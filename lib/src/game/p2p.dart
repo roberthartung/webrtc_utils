@@ -37,3 +37,14 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer> extends We
     // return new GameRoom<P2PGame, L,R>(this, room);
   }*/
 }
+
+abstract class SynchronizedP2PGame<L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer>
+    extends P2PGame<L, R> {
+  SynchronizedP2PGame(String webSocketUrl, Map rtcConfiguration)
+      : super(webSocketUrl, rtcConfiguration);
+
+  @override
+  SynchronizedGameRoom createGameRoom(Room room) {
+    return new SynchronizedGameRoom<SynchronizedP2PGame, L, R>(this, room);
+  }
+}

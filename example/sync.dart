@@ -47,20 +47,63 @@
 
 import 'package:webrtc_utils/game.dart';
 import 'dart:html';
-//import 'dart:async';
-//import 'dart:math';
 
 final String webSocketUrl = 'ws://${window.location.hostname}:28080';
+
+/**
+ * Shared logic
+ */
+
+class Circle {
+  final Point middle;
+  
+  Circle(this.middle);
+  
+  void tick() {
+    
+  }
+}
+
+abstract class DemoPlayer {
+  SynchronizedGameRoom get room;
+  
+  List<Circle> circles = [];
+  
+  /**
+   * Listener on the game room that waits for synchronized messages
+   */
+  
+  void _setupListener() {
+    room.onSynchronizedMessage.listen((Map message) {
+      Point p = new Point(message['click']['x'], message['click']['y']);
+      _click(p);
+    });
+  }
+  
+  void _click(Point p) {
+    new Circle(p);
+  }
+  
+  void tick(int tick) {
+    circles.forEach((Circle c) {
+      c.tick();
+    });
+  }
+}
 
 /**
  * An example of a local player
  */
 
-class MyLocalPlayer extends SynchronizedLocalPlayer {
-  MyLocalPlayer(SynchronizedGameRoom room, int id) : super(room, id);
+class MyLocalPlayer extends SynchronizedLocalPlayer with DemoPlayer {
+  CanvasElement _canvas;
   
-  void tick(int tickCount) {
-    
+  MyLocalPlayer(SynchronizedGameRoom gameRoom, int id) : super(gameRoom, id) {
+    _setupListener();
+    _canvas = querySelector('#canvas');
+    _canvas.onClick.listen((MouseEvent ev) {
+      gameRoom.synchronizeMessage({'click': {'x': ev.offset.x, 'y': ev.offset.y}});
+    });
   }
 }
 
@@ -68,11 +111,9 @@ class MyLocalPlayer extends SynchronizedLocalPlayer {
  * An example of a remote player
  */
 
-class MyRemotePlayer extends SynchronizedRemotePlayer {
-  MyRemotePlayer(SynchronizedGameRoom room, Peer peer) : super(room, peer);
-  
-  void tick(int tickCount) {
-    
+class MyRemotePlayer extends SynchronizedRemotePlayer with DemoPlayer {
+  MyRemotePlayer(SynchronizedGameRoom room, Peer peer) : super(room, peer) {
+    _setupListener();
   }
 }
 
@@ -84,7 +125,27 @@ class MyRemotePlayer extends SynchronizedRemotePlayer {
 class SynchronizedGame extends SynchronizedP2PGame<MyLocalPlayer,MyRemotePlayer>
   /* with AlivePlayerGame<MyLocalPlayer, MyRemotePlayer>*/ {
   SynchronizedGame(String webSocketUrl, Map rtcConfiguration)
-    : super(webSocketUrl, rtcConfiguration);
+    : super(webSocketUrl, rtcConfiguration) {
+    startAnimation();
+  }
+  
+  void _tick(double localTime) {
+    /*
+    rooms.forEach((String name, SynchronizedGameRoom room) {
+      print('Room $room');
+      room.tick(localTime);
+    });
+    */
+    // Convert local to global time
+    // Execute events for all players
+    // regular rendering stuff
+    
+    startAnimation();
+  }
+  
+  void startAnimation() {
+    window.requestAnimationFrame(_tick);
+  }
   
   @override
   MyLocalPlayer createLocalPlayer(GameRoom room, int localId) {

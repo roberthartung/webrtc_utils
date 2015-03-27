@@ -1,0 +1,21 @@
+import 'package:webrtc_utils/client.dart';
+import 'dart:html';
+
+const Map rtcConfiguration = const {"iceServers": const [ const {"url": "stun:stun.l.google.com:19302"}]};
+final String url = 'ws://${window.location.hostname}:28080';
+P2PClient client;
+
+void main() {
+  client = new PollingP2PClient("http://roberthartung.dyndns.org/git/webrtc_utils/bin/server.php", rtcConfiguration);
+  // client = new WebSocketP2PClient(url, rtcConfiguration);
+  
+  client.onConnect.listen((final int id) {
+    // Join rooms with client.join(...)
+  });
+  
+  client.onJoinRoom.listen((final Room room) {
+    // Existing peer in the channel are available in room.peers
+    // Listen for room.onLeave
+    // Listen for room.onJoin, to create streams and channels when a new remote client joins
+  });
+}

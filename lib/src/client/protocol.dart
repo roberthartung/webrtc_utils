@@ -57,7 +57,7 @@ class RawProtocol<M> implements DataChannelProtocol<M> {
    */
   
   void send(M message) {
-    print('Sending $message to ${channel.label} via ${channel.protocol}');
+    // print('[$this] Sending $message to ${channel.label} via ${channel.protocol}');
     channel.send(message);
   }
 }

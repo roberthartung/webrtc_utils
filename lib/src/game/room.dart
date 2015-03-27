@@ -70,8 +70,8 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
    * The room of this gameroom
    */
   
-  Room get room => _room;
-  final Room _room;
+  ProtocolRoom get room => _room;
+  final ProtocolRoom _room;
   
   GameRoom(this.game, this._room) {
     // _localPlayer = createLocalPlayer(game.id);
@@ -175,37 +175,33 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
   
   double get globalTime => isOwner ? window.performance.now() : window.performance.now();
   
+  int _maxPing = null;
+  
+  int get maxPing => _maxPing;
+  
   Map<R, JsonProtocol> _pingablePlayers = {};
+  
+  
+  Stream get onSynchronizedMessage => _onSynchronizedMessageController.stream;
+  StreamController _onSynchronizedMessageController = new StreamController.broadcast();
   
   /**
    * Constructor of the [SynchronizedGameRoom] class
    */
   
-  SynchronizedGameRoom(G game, Room room) : super(game, room) {
-    // If there are no remote players, wait for first player and start timer
-    if(remotePlayers.length == 0) {
-      onPlayerJoin.first.then((_) {
-        _startSynchronizationTimer();
-      });
-    }
-    // If there is at least one player, start synchronization timer immedeately
-    else {
-      _startSynchronizationTimer();
-    }
-    
+  SynchronizedGameRoom(G game, ProtocolRoom room) : super(game, room) {
     // Loop through existing players in the channel
     remotePlayers.forEach(_onPlayerJoined);
     
     onPlayerJoin.listen((R remotePlayer) {
-      // Create channel only for players that join after us.
       _onPlayerJoined(remotePlayer);
+      // Create channel only for players that join after us.
       remotePlayer.peer.createChannel('synchronization', {'protocol': 'json'});
     });
     
     // Remove Player from list and cancel timer if there are no more RemotePlayers
     onPlayerLeave.listen((R remotePlayer) {
       _pingablePlayers.remove(remotePlayer);
-      
       if(_pingablePlayers.length == 0) {
         _pingTimer.cancel();
         _pingTimer = null;
@@ -214,36 +210,19 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
   }
   
   /**
-   * Received a message from the synchronization channel
-   */
-  
-  void _onSynchronizationProtocolMessage(JsonProtocol protocol, Map data) {
-    if(data.containsKey('ping')) {
-      double diff = window.performance.now() - data['ping'];
-      // if diff is <0 
-      protocol.send({'pong': data['ping']});
-      print('Diff: $diff');
-    } else if(data.containsKey('pong')) {
-      // Calculate ping
-      double rtt = window.performance.now() - data['pong'];
-      double ping = rtt/2;
-      print('Ping: $ping');
-    }
-  }
-  
-  /**
    * A RemotePlayer [R] joined (existing ones and new ones!)
    */
   
   void _onPlayerJoined(R remotePlayer) {
+    if(_pingTimer == null) {
+      _startSynchronizationTimer();
+    }
+
     print('[$this] Player $remotePlayer joined');
-    
-    // Wait for synchronization protocol
-    // TODO(rh): Can we cancel the subscription afterwards?
     remotePlayer.peer.onProtocol.listen((DataChannelProtocol protocol) {
-      if(protocol is JsonProtocol && protocol.channel.label == 'synchronization') {
+      if (protocol is JsonProtocol && protocol.channel.label == 'synchronization') {
         _pingablePlayers[remotePlayer] = protocol;
-        protocol.onMessage.listen((Object message) => _onSynchronizationProtocolMessage(protocol, message));
+        remotePlayer._startSynchronization(protocol);
       }
     });
   }
@@ -257,15 +236,36 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
   }
   
   /**
-   * Ping timer tick
+   * Get maximum ping across all remote players in this room every second
    */
   
   void _ping(Timer t) {
-    // TODO(rh): Use _room.send()?
+    // TODO(rh): Implement and use _room.send()? -> How do we get the channel label?
     // Send ping message to all players
-    Map pingMessage = {'ping': window.performance.now()};
+    double _maxPing = null;
+    
+    // TODO(rh): Should we use this?
+    // room.sendToProtocol('synchronization', {'ping': window.performance.now()});
+    
     _pingablePlayers.forEach((R remotePlayer, JsonProtocol protocol) {
-      protocol.send(pingMessage);
+      protocol.send({'ping': window.performance.now()});
+      // ping might be null at first run
+      if(remotePlayer.ping != null && (_maxPing == null || remotePlayer.ping > _maxPing)) {
+        _maxPing = remotePlayer.ping;
+      }
     });
+    
+    if(_maxPing != null) {
+      // TODO(rh): Should we provide a onMaxPing stream?
+      print('MaxPing: $_maxPing');
+    }
+  }
+  
+  void synchronizeMessage(dynamic message) {
+    
+  }
+  
+  void tick(double localTime) {
+    print('[$this] tick@$localTime');
   }
 }
