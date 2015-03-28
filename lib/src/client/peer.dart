@@ -11,7 +11,7 @@ class Peer<C extends P2PClient> {
   final int id;
   
   // The room this peer belongs to
-  final Room room;
+  final PeerRoom room;
   
   // The RtcPeerConnection
   final RtcPeerConnection _pc;

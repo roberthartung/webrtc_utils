@@ -4,11 +4,11 @@ The *webrtc_utils* package will help you to use WebRTC (See: [Official Website](
 
 ### Architecture Overview
 
-![](https://github.com/roberthartung/webrtc_utils/blob/master/doc/architecture.png)
+![](https://github.com/roberthartung/webrtc_utils/raw/master/doc/architecture.png)
 
 ### Classes
 
-![](https://github.com/roberthartung/webrtc_utils/blob/master/doc/classes.png)
+![](https://github.com/roberthartung/webrtc_utils/raw/master/doc/classes.png)
 
 ## What is WebRTC
 

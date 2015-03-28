@@ -9,9 +9,9 @@ import 'dart:async';
 import 'client.dart';
 import 'dart:collection';
 
-export 'client.dart';
+// export 'client.dart';
 
-part 'src/game/p2p.dart';
+part 'src/game/game.dart';
 part 'src/game/room.dart';
 part 'src/game/player.dart';
-part 'src/game/communication.dart';
+part 'src/game/protocol.dart';

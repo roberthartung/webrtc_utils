@@ -70,8 +70,8 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
    * The room of this gameroom
    */
   
-  ProtocolRoom get room => _room;
-  final ProtocolRoom _room;
+  ProtocolPeerRoom get room => _room;
+  final ProtocolPeerRoom _room;
   
   GameRoom(this.game, this._room) {
     // _localPlayer = createLocalPlayer(game.id);
@@ -175,15 +175,6 @@ class MessageQueue<M> {
   bool get isEmpty => queue.isEmpty;
   
   /**
-   * Current message
-   */
-  
-  /*
-  Set<M> _current = null;
-  Set<M> get current => _current;
-  */
-  
-  /**
    * Adds a message at the given point in time
    */
   
@@ -202,7 +193,7 @@ class MessageQueue<M> {
     final double key =  queue.firstKey();
     // Get first Queue
     Queue<M> head = queue[key];
-    // Remove first
+    // Remove first so we can check for emptyness afterwards
     M first = head.removeFirst();
     // Remove head if queue is empty
     if(head.isEmpty) {
@@ -215,12 +206,14 @@ class MessageQueue<M> {
    * Peek at the first element but do not remove it
    */
   
+  /*
   M peek() {
     if(queue.isEmpty) {
       throw new StateError("MessageQueue is empty");
     }
     return queue[queue.firstKey()].first;
   }
+  */
 }
 
 /**
@@ -233,9 +226,11 @@ extends GameRoom<G,L,R> {
   
   double get globalTime => isOwner ? window.performance.now() : window.performance.now();
   
-  int _maxPing = null;
+  double _maxPing = null;
+  double get maxPing => _maxPing == null ? 0 : _maxPing;
   
-  int get maxPing => _maxPing == null ? 0 : _maxPing;
+  double _maxPositiveTimeDifference = null;
+  double get timeDifferenceToMaster => _maxPositiveTimeDifference == null ? 0 : _maxPositiveTimeDifference;
   
   Map<R, JsonProtocol> _pingablePlayers = {};
   
@@ -248,7 +243,7 @@ extends GameRoom<G,L,R> {
    * Constructor of the [SynchronizedGameRoom] class
    */
   
-  SynchronizedGameRoom(G game, ProtocolRoom room) : super(game, room) {
+  SynchronizedGameRoom(G game, ProtocolPeerRoom room) : super(game, room) {
     // Loop through existing players in the channel
     remotePlayers.forEach(_onPlayerJoined);
     onPlayerJoin.listen((R remotePlayer) {
@@ -274,8 +269,8 @@ extends GameRoom<G,L,R> {
   void _onPlayerJoined(R remotePlayer) {
     remotePlayer.getGameChannel().then((DataChannelProtocol gameChannel) {
       print('[$this] GameChannel: $gameChannel');
-      // TODO(rh): Take time from SynchronizedMessage class
-      gameChannel.onMessage.listen((message) => _synchronizeMessage(window.performance.now(), message));
+      // Sub ping from time because it passed over network
+      gameChannel.onMessage.listen((message) => _synchronizeMessage(message['time'] - remotePlayer.ping, message));
     });
 
     if(_pingTimer == null) {
@@ -306,20 +301,35 @@ extends GameRoom<G,L,R> {
   void _ping(Timer t) {
     // TODO(rh): Implement and use _room.send()? -> How do we get the channel label?
     // Send ping message to all players
-    double _maxPing = null;
+    double maxPing = null;
+    _maxPositiveTimeDifference = null;
     
     // TODO(rh): Should we use this?
     // room.sendToProtocol('synchronization', {'ping': window.performance.now()});
     
     _pingablePlayers.forEach((R remotePlayer, JsonProtocol protocol) {
       protocol.send({'ping': window.performance.now()});
+      
+      // get maximum difference
+      // 
+      if(remotePlayer.timeDifference > 0 && (_maxPositiveTimeDifference == null || remotePlayer.timeDifference > _maxPositiveTimeDifference)) {
+        _maxPositiveTimeDifference = remotePlayer.timeDifference;
+      }
+      
       // ping might be null at first run
-      if(remotePlayer.ping != null && (_maxPing == null || remotePlayer.ping > _maxPing)) {
-        _maxPing = remotePlayer.ping;
+      if(remotePlayer.ping != null && (maxPing == null || remotePlayer.ping > maxPing)) {
+        maxPing = remotePlayer.ping;
       }
     });
     
-    if(_maxPing != null) {
+    if(maxPing != null) {
+      if(_maxPing == null || maxPing > _maxPing) {
+        _maxPing = maxPing;
+      } else {
+        _maxPing = _maxPing * .5 + maxPing * .5;
+      }
+      querySelector('#maxping').text = '$_maxPing';
+      querySelector('#maxdifference').text = '$_maxPositiveTimeDifference';
       // TODO(rh): Should we provide an onMaxPing stream?
       // print('MaxPing: $_maxPing');
     }
@@ -332,11 +342,12 @@ extends GameRoom<G,L,R> {
   void synchronizeMessage(dynamic message) {
     // print('[$this] synchronizeMessage: $message');
     room.sendToProtocol('game', message);
-    _synchronizeMessage(window.performance.now() + maxPing * 2, message);
+    // Delay message locally
+    _synchronizeMessage(message['time'], message);
   }
   
   void tick(double localTime) {
-    double globalTime = localTime;
+    double globalTime = localTime + timeDifferenceToMaster;
     // If there are messages in the queue
     // Deliver all messages that have smaller or equal global time
     while(!_messageQueue.isEmpty && _messageQueue.queue.firstKey() <= globalTime) {

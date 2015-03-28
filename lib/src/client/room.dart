@@ -1,11 +1,13 @@
 /**
  * The concept of a room is to reuse the signaling server for lots of [Peer]s.
- * A [Room] can be password protected (server side). 
+ * A room can be password protected (server side).
+ * 
+ * The PeerRoom class holds a list of [Peer]s that are in this room 
  */
 
 part of webrtc_utils.client;
 
-class Room<P extends Peer, C extends P2PClient> {
+class PeerRoom<P extends Peer, C extends P2PClient> {
   /**
    * Name of the room
    */
@@ -13,16 +15,20 @@ class Room<P extends Peer, C extends P2PClient> {
   final String name;
 
   /**
-   * [P2PClient] instance for this room - passed to the peer to exchange signaling messages
+   * Client instance for this room - passed to the peer to exchange signaling messages
    */
   
   final C client;
   
   /**
-   * Map of peers
+   * Internal Map of peers
    */
   
   final Map<int, P> _peers = {};
+  
+  /**
+   * Getter of Peers
+   */
   
   Iterable<P> get peers => _peers.values;
 
@@ -44,14 +50,16 @@ class Room<P extends Peer, C extends P2PClient> {
    * Library internal constructor
    */
   
-  Room._(this.client, this.name);
+  PeerRoom._(this.client, this.name);
   
   /**
-   * Signaling message received
+   * Signaling message received from the signaling server
+   * The argument should always be a [SessionDescriptionMessage] or
+   * [IceCandidateMessage] message. The rest is handled directly by the client
    */
   
   void _onSignalingMessage(SignalingMessage sm) {
-    // In this case the peerId of the [SignalingMessage] is the source peerID
+    // In this case the peerId of the [SignalingMessage] is the source peerId
     final P peer = _peers[sm.peerId];
     final RtcPeerConnection pc = peer._pc;
     
@@ -94,24 +102,32 @@ class Room<P extends Peer, C extends P2PClient> {
   
   /**
    * Sends a message to all peers on a specific channel
+   * It will check if the channel exists and if it is open.
+   *  
+   * Returns the number of peers that have not received the message
    */
   
-  void sendToChannel(String channelLabel, dynamic message) {
+  int sendToChannel(String channelLabel, dynamic message) {
+    int notSendCount = 0;
     peers.forEach((Peer peer) {
       final RtcDataChannel channel = peer.channels[channelLabel];
       if(channel != null && channel.readyState == 'open') {
         channel.send(message);
+      } else {
+        notSendCount++;
       }
     });
+    return notSendCount;
   }
 }
 
 /**
- * A room with ProtocolPeers
+ * A room consisting of [ProtocolPeers] that is a peer that's using
+ * a [DataChannelProtocol] on top of [RtcDataChannel]
  */
 
-class ProtocolRoom extends Room<ProtocolPeer, ProtocolP2PClient> {
-  ProtocolRoom._(client, name) : super._(client, name);
+class ProtocolPeerRoom extends PeerRoom<ProtocolPeer, ProtocolP2PClient> {
+  ProtocolPeerRoom._(client, name) : super._(client, name);
   
   void sendToProtocol(String channelLabel, dynamic message) {
     peers.forEach((ProtocolPeer peer) {

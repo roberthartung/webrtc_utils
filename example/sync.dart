@@ -45,11 +45,15 @@
  * To get an accurate result we use [window.performance.now]. 
  */
 
+import 'package:webrtc_utils/client.dart';
 import 'package:webrtc_utils/game.dart';
 import 'dart:html';
 import 'dart:math';
+import 'dart:async';
 
 final String webSocketUrl = 'ws://${window.location.hostname}:28080';
+
+const TICKS_PER_SECONDS = 10;
 
 /**
  * Shared logic
@@ -101,7 +105,7 @@ abstract class DemoPlayer {
     circles.add(new Circle(p));
   }
   
-  void tick(double time) {
+  void tick(int tick) {
     List<Circle> finishedCircles = [];
     circles.forEach((Circle c) {
       if(c.tick()) {
@@ -127,7 +131,9 @@ class MyLocalPlayer extends SynchronizedLocalPlayer with DemoPlayer {
     _setupListener();
     _canvas = querySelector('#canvas');
     _canvas.onClick.listen((MouseEvent ev) {
-      gameRoom.synchronizeMessage({'click': {'x': ev.offset.x, 'y': ev.offset.y}});
+      // TODO(rh): To Global Time
+      // window.performance.now()
+      gameRoom.synchronizeMessage({'click': {'x': ev.offset.x, 'y': ev.offset.y}, 'time': (window.performance.now() + gameRoom.maxPing * 2)});
     });
   }
 }
@@ -141,12 +147,6 @@ class MyRemotePlayer extends SynchronizedRemotePlayer with DemoPlayer {
     _setupListener();
   }
 }
-
-/*
-class MyGameProtocol extends JsonProtocol {
-  MyGameProtocol(RtcDataChannel channel) : super(channel);
-}
-*/
 
 /**
  * Protocol provider that handles message serialization
@@ -174,6 +174,8 @@ class SynchronizedGame extends SynchronizedP2PGame<MyLocalPlayer,MyRemotePlayer>
   
   CanvasRenderingContext2D ctx;
   
+  int fpsCounter = 0;
+  
   SynchronizedGame(String webSocketUrl, Map rtcConfiguration)
     : super(webSocketUrl, rtcConfiguration) {
     setProtocolProvider(new MyProtocolProvider());
@@ -181,21 +183,40 @@ class SynchronizedGame extends SynchronizedP2PGame<MyLocalPlayer,MyRemotePlayer>
     canvas = querySelector('#canvas');
     ctx = canvas.getContext('2d');
     startAnimation();
+    new Timer.periodic(new Duration(seconds: 1), (Timer t) {
+      querySelector('#fps').text = '$fpsCounter';
+      fpsCounter = 0;
+    });
   }
   
+  // TODO(rh): Do not initialize to 0! Wait for onSynchronized event and take global time for initialization
+  // double _lastTickTime = 0.0;
+  int lastTick = 0;
+  
   void _tick(double localTime) {
+    fpsCounter++;
+    // Make tick in each room to update the room-global time
     gameRooms.forEach((SynchronizedGameRoom room) {
       room.tick(localTime);
     });
     
+    // Rendering...
+    // TODO(rh): Decouple these two steps!
     ctx.clearRect(0,0, canvas.width, canvas.height);
     gameRooms.forEach((SynchronizedGameRoom room) {
+      double globalTime = room.timeDifferenceToMaster + localTime;
+      int currentTick = globalTime ~/ TICKS_PER_SECONDS;
+      querySelector('#globaltime').text = '${globalTime}';
       room.players.forEach((Player player) {
-        player.tick(localTime);
+        for(int t=lastTick+1;t<=currentTick;t++) {
+          player.tick(t);
+        }
         if(player is DemoPlayer) {
           (player as DemoPlayer).render(ctx);
         }
       });
+      
+      lastTick = currentTick;
     });
     
     startAnimation();

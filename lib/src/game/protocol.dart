@@ -32,7 +32,7 @@ class MessageProtocol<M> implements DataChannelProtocol<M> {
    * The P2P Game instance, used to get the [GameMessageFactory] from
    */
   
-  final MessageFactory messageFactory;
+  final MessageFactory<M> messageFactory;
   
   Stream<M> get onMessage => _onMessageController.stream;
   StreamController<M> _onMessageController = new StreamController<M>.broadcast();

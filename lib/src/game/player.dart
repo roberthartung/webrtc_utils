@@ -27,7 +27,7 @@ abstract class Player<R extends GameRoom> {
   
   Player(this.room, this.id);
   
-  void tick(double time);
+  void tick(int tick);
 }
 
 /**
@@ -99,8 +99,11 @@ abstract class SynchronizedRemotePlayer /*<R extends SynchronizedGameRoom>*/ ext
   
   void _onSynchronizationProtocolMessage(JsonProtocol protocol, Map data) {
     if(data.containsKey('ping')) {
-      _timeDifference = window.performance.now() - data['ping'];
-      // if diff is smaller than "0"
+      // if positive, then we're behind this peer
+      // add ping to time, because this makes it an additional shift in time
+      if(ping != null) {
+        _timeDifference = (data['ping'] + ping) - window.performance.now();
+      }
       protocol.send({'pong': data['ping']});
     } else if(data.containsKey('pong')) {
       // Calculate ping
@@ -108,7 +111,7 @@ abstract class SynchronizedRemotePlayer /*<R extends SynchronizedGameRoom>*/ ext
       if(_ping == null) {
         _ping = rtt / 2;
       } else {
-        _ping = (rtt / 2) * .5 + _ping * .5;
+        _ping = (rtt / 2) * .25 + _ping * .75;
       }
     }
   }
@@ -158,8 +161,6 @@ abstract class LocalReadyPlayer {
   /**
    * Abstract getter for the [P2PGame]
    */
-  
-  // P2PGame get game;
   
   GameRoom get room;
   

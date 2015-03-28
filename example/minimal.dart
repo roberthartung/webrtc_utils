@@ -12,7 +12,7 @@ void main() {
     // Join rooms with client.join(...)
   });
   
-  client.onJoinRoom.listen((final Room room) {
+  client.onJoinRoom.listen((final PeerRoom room) {
     // Existing peer in the channel are available in room.peers
     // Listen for room.onLeave
     // Listen for room.onJoin, to create streams and channels when a new remote client joins

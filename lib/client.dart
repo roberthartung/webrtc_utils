@@ -1,23 +1,37 @@
+/**
+ * The client library of this package. Provides several implementations that
+ * can be used in a variety of applications and use cases.
+ * 
+ * For an introduction to WebRTC and a good architecture overview see the README.md
+ * 
+ * See [P2PClient]/[ProtocolP2PClient], [WebSocketP2PClient]/[WebSocketProtocolP2PClient]
+ * for main entry points used by your app.
+ * 
+ * See also [Peer]/[ProtocolPeer] and [PeerRoom]/[ProtocolPeerRoom]
+ * 
+ * If you want to build a browser based, P2P game see the game library of this package
+ */
+
 library webrtc_utils.client;
 
-import 'dart:async';
+import 'dart:async' show Future, Stream, StreamController;
 import 'signaling.dart';
-import 'converter.dart';
-// JsonProtocol
-import 'dart:convert';
-// Rtc*
-import 'dart:html';
+import 'converter.dart' show JsonConverter;
+import 'dart:convert' show JSON;
+import 'dart:html' show RtcDataChannel, RtcDataChannelEvent, RtcPeerConnection, Event, RtcIceCandidate, RtcIceCandidateEvent, MessageEvent, CloseEvent, WebSocket, RtcSessionDescription, MediaStream, MediaStreamEvent;
 
 part 'src/client/peer.dart';
 part 'src/client/room.dart';
-part 'src/client/p2p.dart';
+part 'src/client/client.dart';
 part 'src/client/protocol.dart';
 
 part 'src/client/signaling/channel.dart';
 part 'src/client/signaling/websocket.dart';
-part 'src/client/signaling/polling.dart';
 
-part 'src/client/converter/message.dart';
+/**
+ * A const list of iceServers that you can use to determine the client's public
+ * IP address
+ */
 
 const List iceServers = const [
   const {'url':'stun:stun01.sipphone.com'},
@@ -40,5 +54,9 @@ const List iceServers = const [
   const {'url':'stun:stun.voxgratia.org'},
   const {'url':'stun:stun.xten.com'}
 ];
+
+/**
+ * A sample rtcConfiguration that you can use
+ */
 
 const Map rtcConfiguration = const {"iceServers": iceServers};

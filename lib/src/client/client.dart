@@ -4,7 +4,7 @@ part of webrtc_utils.client;
  * Basic P2P Client class
  */
 
-abstract class P2PClient<R extends Room, P extends Peer> {
+abstract class P2PClient<R extends PeerRoom, P extends Peer> {
   /**
    * The signaling channel to use for establishing a connection
    */
@@ -127,7 +127,7 @@ abstract class P2PClient<R extends Room, P extends Peer> {
   }
   
   R _createRoom(String name) {
-    return new Room<P, P2PClient>._(this, name);
+    return new PeerRoom<P, P2PClient>._(this, name);
   }
 }
 
@@ -135,7 +135,7 @@ abstract class P2PClient<R extends Room, P extends Peer> {
  * A P2PClient that uses a [DataChannelProtocol] on top of a [Peer]s [RtcDataChannel]
  */
 
-class ProtocolP2PClient<R extends ProtocolRoom> extends P2PClient<R, ProtocolPeer> {
+class ProtocolP2PClient<R extends ProtocolPeerRoom> extends P2PClient<R, ProtocolPeer> {
   /**
    * Protocol provider
    */
@@ -160,8 +160,8 @@ class ProtocolP2PClient<R extends ProtocolRoom> extends P2PClient<R, ProtocolPee
     return new ProtocolPeer._(room, peerId, this);
   }
   
-  ProtocolRoom _createRoom(String name) {
-    return new ProtocolRoom._(this, name);
+  ProtocolPeerRoom _createRoom(String name) {
+    return new ProtocolPeerRoom._(this, name);
   }
 }
 
@@ -169,15 +169,7 @@ class ProtocolP2PClient<R extends ProtocolRoom> extends P2PClient<R, ProtocolPee
  * A WebSocket implementation for a P2P client
  */
 
-class PollingP2PClient<R extends Room, P extends Peer> extends P2PClient<R, P> {
-  PollingP2PClient(String pollingUrl, Map _rtcConfiguration) : super(new PollingSignalingChannel(pollingUrl), _rtcConfiguration);
-}
-
-/**
- * A WebSocket implementation for a P2P client
- */
-
-class WebSocketP2PClient<R extends Room, P extends Peer> extends P2PClient<R, P> {
+class WebSocketP2PClient<R extends PeerRoom, P extends Peer> extends P2PClient<R, P> {
   WebSocketP2PClient(String webSocketUrl, Map _rtcConfiguration) : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
 }
 
@@ -185,6 +177,6 @@ class WebSocketP2PClient<R extends Room, P extends Peer> extends P2PClient<R, P>
  * A WebSocket implementation for a protocol based P2P client
  */
 
-class WebSocketProtocolP2PClient<R extends ProtocolRoom> extends ProtocolP2PClient<R> {
+class WebSocketProtocolP2PClient<R extends ProtocolPeerRoom> extends ProtocolP2PClient<R> {
   WebSocketProtocolP2PClient(String webSocketUrl, Map _rtcConfiguration) : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
 }

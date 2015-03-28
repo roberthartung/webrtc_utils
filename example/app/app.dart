@@ -67,7 +67,7 @@ void main() {
     client.join('demo');
   });
   
-  client.onJoinRoom.listen((Room room) {
+  client.onJoinRoom.listen((PeerRoom room) {
     print('Joined room');
     room.peers.forEach(_peerJoined);
     room.onPeerJoin.listen(_peerJoined);

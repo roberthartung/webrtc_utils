@@ -32,7 +32,7 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends 
   P2PGame(String webSocketUrl,
       Map rtcConfiguration)
     : super(webSocketUrl, rtcConfiguration) {
-    onJoinRoom.listen((Room room) {
+    onJoinRoom.listen((PeerRoom room) {
       G gameRoom = createGameRoom(room);
       gameRooms.add(gameRoom);
       _onGameRoomCreatedController.add(gameRoom);
@@ -45,7 +45,7 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends 
     });
   }
   
-  GameRoom createGameRoom(Room room);
+  GameRoom createGameRoom(PeerRoom room);
   
   L createLocalPlayer(GameRoom room, int id);
   
@@ -62,7 +62,7 @@ abstract class SynchronizedP2PGame<L extends SynchronizedLocalPlayer, R extends 
       : super(webSocketUrl, rtcConfiguration);
 
   @override
-  SynchronizedGameRoom createGameRoom(Room room) {
+  SynchronizedGameRoom createGameRoom(PeerRoom room) {
     return new SynchronizedGameRoom<SynchronizedP2PGame, L, R>(this, room);
   }
 }

@@ -32,7 +32,7 @@ void main() {
     client.join('krypto');
   });
   
-  client.onJoinRoom.listen((final Room room) {
+  client.onJoinRoom.listen((final PeerRoom room) {
     print('I joined Room ${room.name} with peers ${room.peers}');
     
     // Loop through existing peers

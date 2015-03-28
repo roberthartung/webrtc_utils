@@ -116,7 +116,7 @@ void main() {
     client.join('filetransfer');
   });
   
-  client.onJoinRoom.listen((final Room room) {
+  client.onJoinRoom.listen((final PeerRoom room) {
     room.peers.forEach(_onPeerJoined);
     room.onPeerJoin.listen(_onPeerJoined);
     
