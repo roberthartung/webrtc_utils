@@ -56,7 +56,7 @@ abstract class DemoPlayer {
    * Handle a synchronized message
    */
   
-  void handleMessage(SynchronizedGameMessage message) {
+  void handleMessage(GameMessage message) {
     if(message is ClickMessage) {
       circles.add(new Circle(message.point));
     }
@@ -67,10 +67,9 @@ abstract class DemoPlayer {
   }
 }
 
-class ClickMessage implements SynchronizedGameMessage {
-  final int tick;
+class ClickMessage implements GameMessage {
   final Point point;
-  ClickMessage(this.tick, this.point);
+  ClickMessage(this.point);
 }
 
 /**
@@ -84,7 +83,7 @@ class MyLocalPlayer extends SynchronizedLocalPlayer with DemoPlayer {
     //_setupListener();
     _canvas = querySelector('#canvas');
     _canvas.onClick.listen((MouseEvent ev) {
-      gameRoom.synchronizeMessage(new ClickMessage(1, ev.offset));
+      gameRoom.synchronizeMessage(new ClickMessage(ev.offset));
     });
   }
   
@@ -139,24 +138,28 @@ class GameProtocol extends JsonProtocol {
   @override
   SynchronizedGameMessage handleMessage(String data) {
     Object o = super.handleMessage(data);
+    GameMessage gm;
     if(o is Map) {
       if(o.containsKey('click')) {
-        return new ClickMessage(o['tick'], new Point(o['click']['x'], o['click']['y']));
+        gm = new ClickMessage(new Point(o['click']['x'], o['click']['y']));
       } else {
-        throw "Unknown Message: $o";
+        throw "Unknown message: $o";
       }
-    } else {
-      throw "Message is not a map: $o";
+      
+      return new SynchronizedGameMessage(o['tick'], gm);
     }
+    
+    throw "Unknown message: $o";
   }
   
   @override
-  void send(SynchronizedGameMessage message) {
-    Map map = {'tick': message.tick};
-    if(message is ClickMessage) {
-      map['click'] = {'x': message.point.x, 'y': message.point.y};
+  void send(SynchronizedGameMessage sm) {
+    Map map = {'tick': sm.tick};
+    if(sm.message is ClickMessage) {
+      ClickMessage m = sm.message as ClickMessage;
+      map['click'] = {'x': m.point.x, 'y': m.point.y};
     } else {
-      throw "Unable to send message $message";
+      throw "Unable to send message ${sm.message}";
     }
     super.send(map);
   }
@@ -245,7 +248,7 @@ void main() {
   Chain.capture(() {
     game.onConnect.listen((_) {
       print('Connected');
-      game.join('room1');
+      game.join('example/game/sync');
     });
   }, onError: (error, stack) {
     print(error);

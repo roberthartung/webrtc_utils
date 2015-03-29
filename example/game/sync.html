@@ -14,21 +14,22 @@
   </head>
  
   <body>
-    <canvas id="canvas" width="400" height="300"></canvas>
+    <div>fps: <span id="fps"></span></div>
     
-    <div>
-      max ping: <span id="maxping"></span> [ms]
+    <div id="rooms">
+      <canvas id="canvas" width="400" height="300"></canvas>
+      <!--
+      <div>
+        max ping: <span id="maxping"></span> [ms]
+      </div>
+      <div>
+        max diff: <span id="maxdifference"></span> [ms]
+      </div>
+      <div>
+        global: <span id="globaltime"></span> [ms]
+      </div>
+      -->
     </div>
-    <div>
-      max diff: <span id="maxdifference"></span> [ms]
-    </div>
-    <div>
-      global: <span id="globaltime"></span> [ms]
-    </div>
-    <div>
-      fps: <span id="fps"></span>
-    </div>
-    
   
     <script type="application/dart" src="sync.dart"></script>
     <!-- for this next line to work, your pubspec.yaml file must have a dependency on 'browser' -->

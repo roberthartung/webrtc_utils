@@ -159,6 +159,11 @@ class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends RemotePlayer,
   }
 }
 
+
+
+
+
+
 /**
  * A Message Queue for the [SynchronizedGameRoom]
  */
@@ -209,6 +214,13 @@ class MessageQueue<M> {
   }
 }
 
+
+
+
+
+
+
+
 /**
  * Synchronized version of a game room. The gameroom will send a 'ping' message to all
  * remote players every 1 second. 
@@ -232,9 +244,9 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
    */
   
   double get globalTime => isOwner ? window.performance.now() : window.performance.now() + timeDifferenceToMaster;
-  
-  // TODO(rh)
   int get globalTick => globalTime ~/ (1000.0 / game.targetTickRate);
+  
+  int toGlobalTick(int delay) => ((globalTime + maxPing) ~/ (1000.0 / game.targetTickRate)) + delay;
   
   /**
    * Internal variable for holding the maximum ping. The maximum ping will be adjusted
@@ -246,13 +258,13 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
    * long enough.
    */
   
-  double _maxPing = null;
+  num _maxPing = null;
   
   /**
    * Public getter
    */
   
-  double get maxPing => _maxPing == null ? 0 : _maxPing;
+  num get maxPing => _maxPing == null ? 0 : _maxPing;
   
   /**
    * Internal 
@@ -316,9 +328,9 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
   
   void _onPlayerJoined(R remotePlayer) {
     // Whenever a new remote player joins make sure
-    if(_isSynchronized) {
+    if(isSynchronized) {
       _isSynchronized = false;
-      _onSynchronizationStateChangedController.add(_isSynchronized);
+      _onSynchronizationStateChangedController.add(isSynchronized);
     }
     
     remotePlayer.getSynchronizationChannel().then((JsonProtocol protocol) {
@@ -356,8 +368,10 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
       protocol.send({'ping': window.performance.now()});
       
       // Difference in time
-      if(remotePlayer.timeDifference != null && remotePlayer.timeDifference > 0 && (_maxPositiveTimeDifference == null || remotePlayer.timeDifference > _maxPositiveTimeDifference)) {
-        _maxPositiveTimeDifference = remotePlayer.timeDifference;
+      if(remotePlayer.timeDifference != null) {
+        if(remotePlayer.timeDifference > 0 && (_maxPositiveTimeDifference == null || remotePlayer.timeDifference > _maxPositiveTimeDifference)) {
+          _maxPositiveTimeDifference = remotePlayer.timeDifference;
+        }
       } else {
         // If we don't know the difference of this player he is not in sync!
         numOfPlayersOutOfSync++;
@@ -376,30 +390,44 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
         _maxPing = _maxPing * .5 + maxPing * .5;
       }
       
-      print('[$this] _maxPing: $_maxPing $globalTime');
-      
+      // print('[$this] _maxPing: $_maxPing $globalTime');
       // TODO(rh): Should we provide an onMaxPing stream?
     }
     
     if(numOfPlayersOutOfSync == 0) {
-      if(!_isSynchronized) {
+      if(!isSynchronized) {
         _isSynchronized = true;
-        _onSynchronizationStateChangedController.add(_isSynchronized);
+        _onSynchronizationStateChangedController.add(isSynchronized);
       }
     }
   }
   
   /**
-   * Synchronizes a message across all players in this room
+   * Synchronizes a [GameMessage] across all players in this room and optionally
+   * delays it by [tickDelay] ticks. The [GameMessage] will be packed into a
+   * [SynchronizedGameMessage] and send to all remote players and the local player
+   * 
+   * The targetTick will be
+   *      [globalTime] + 2 * [maxPing] to make
+   * to make sure we delay long enough. Then we can convert this time to
+   * globalTicks and add the optional [tickDelay].
+   * 
    */
   
-  void synchronizeMessage(SynchronizedGameMessage message) {
-    print('[$this] Synchronizing message $message');
+  void synchronizeMessage(GameMessage message, {int tickDelay: 1}) {
+    if(tickDelay < 1) {
+      throw new ArgumentError("tickDelay cannnot less than 1!");
+    }
+    
+    double targetTime = (globalTime + 2 * maxPing);
+    int targetTick = targetTime ~/ (1000.0 / game.targetTickRate) + tickDelay;
+    
+    SynchronizedGameMessage sm = new SynchronizedGameMessage(targetTick, message);
+    
     // Send message to all remote players
-    room.sendToProtocol('game', message);
+    room.sendToProtocol('game', sm);
     // Queue message in local player
-    print('[$this] Synchronize message locally for $localPlayer');
-    (localPlayer as SynchronizedPlayer)._synchronizeMessage(message);
+    (localPlayer as SynchronizedPlayer)._synchronizeMessage(sm);
   }
   
   /**

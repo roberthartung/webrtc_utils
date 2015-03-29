@@ -62,10 +62,29 @@ class MessageProtocol<M> implements DataChannelProtocol<M> {
 }
 
 /**
+ * Interface for a game message
+ */
+
+abstract class GameMessage {
+  
+}
+
+/**
  * Interface for a synchronized game message. Actual message format
  * will be defined by the user.
  */
 
+/*
 abstract class SynchronizedGameMessage {
   int get tick;
+  GameMessage get message;
+}
+*/
+
+class SynchronizedGameMessage/* implements SynchronizedGameMessage*/ {
+  final int tick;
+  
+  final GameMessage message;
+  
+  /*_*/SynchronizedGameMessage(this.tick, this.message);
 }

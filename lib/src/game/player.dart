@@ -121,7 +121,7 @@ abstract class SynchronizedPlayer {
    * The message queue holding on to the messages until the point in time is reached.
    */
 
-  MessageQueue _messageQueue = new MessageQueue();
+  MessageQueue<GameMessage> _messageQueue = new MessageQueue<GameMessage>();
 
   /**
    * Method that gets called at a fixed rate that can be configured using 
@@ -147,27 +147,19 @@ abstract class SynchronizedPlayer {
    * received from the remote peer.
    */
   
-  // void _synchronizeMessage(SynchronizedGameMessage message);
-  
-  /**
-   * Synchronizes a message for this player
-   */
-  
   void _synchronizeMessage(SynchronizedGameMessage message) {
     if (!room._isSynchronized) {
       throw new StateError("Room is not synchronized. Unable to synchronize message $message for $this");
     }
-    // window.performance.now() + gameRoom.maxPing * 2
-    // TODO(rh): (globalTime -> ticks) + (maxPing * 2 -> ticks)
-    // room.globalTime + message.tick
-    _messageQueue.add(room.globalTick + message.tick, message);
+    // TODO(rh): We cannot use this function for both local and remote players
+    _messageQueue.add(message.tick, message.message);
   }
   
   /**
    * Handle a SynchronizedMessage
    */
   
-  void handleMessage(SynchronizedGameMessage message);
+  void handleMessage(GameMessage message);
 }
 
 /**
@@ -216,7 +208,7 @@ abstract class SynchronizedRemotePlayer<P extends DataChannelProtocol>
       // _synchronizeMessage(message['time'] - remotePlayer.ping, message)
       // TODO(rh): Substract ping!!
       gameChannel.onMessage.listen((SynchronizedGameMessage message) =>
-          _messageQueue.add(room.globalTick + message.tick, message));
+          _messageQueue.add(message.tick, message.message));
     });
   }
   
