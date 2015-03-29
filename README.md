@@ -2,15 +2,15 @@
 
 The *webrtc_utils* package will help you to use WebRTC (See: [Official Website](http://www.webrtc.org/), [W3C](http://www.w3.org/TR/webrtc/)) in your Dart applications. It offers different wrappers and extension points to help you with your application and to make your life easier. The purpose of this package is to hide necessary details from the user's application, but also give you the the ability and freedom to use your own extensions.
 
-### Architecture Overview
+## Architecture Overview
 
 ![](https://github.com/roberthartung/webrtc_utils/raw/master/doc/architecture.png)
 
-### Classes
+## Classes
 
 ![](https://github.com/roberthartung/webrtc_utils/raw/master/doc/classes.png)
 
-## What is WebRTC
+# What is WebRTC
 
 WebRTC is a concept supported by Chrome, Opera and Firefox to enable **Web** based **R**eal **T**ime **C**ommunication. WebRTC will establish a Peer-to-Peer (P2P) connection (*RtcPeerConnection*) between two browsers. This connection can be used to exchange data. The following types of data exchange are supported:
 
