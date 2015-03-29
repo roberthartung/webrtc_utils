@@ -81,14 +81,16 @@ class SessionDescriptionMessage extends RoomMessage {
   
   Object toObject() {
     Map m = super.toObject();
-    
+    /*
     String sdp = description.sdp;
     List<String> split = sdp.split("b=AS:30");
     if(split.length > 1) {
       sdp = split[0] + "b=AS:1638400" + split[1];
     }
+    */
     
-    m[KEY] = {'sdp' : sdp, 'type' : description.type};
+    // sdp
+    m[KEY] = {'sdp' : description.sdp, 'type' : description.type};
     
     return m;
   }

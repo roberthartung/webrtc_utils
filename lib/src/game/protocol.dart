@@ -60,3 +60,12 @@ class MessageProtocol<M> implements DataChannelProtocol<M> {
     _onMessageController.add(messageFactory.unserialize(message));
   }
 }
+
+/**
+ * Interface for a synchronized game message. Actual message format
+ * will be defined by the user.
+ */
+
+abstract class SynchronizedGameMessage {
+  int get tick;
+}

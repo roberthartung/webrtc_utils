@@ -41,23 +41,22 @@ class RawProtocol<M> implements DataChannelProtocol<M> {
    */
   
   RawProtocol(this.channel) {
-    channel.onMessage.listen((MessageEvent ev) => handleMessage(ev.data));
+    channel.onMessage.listen((MessageEvent ev) => _onMessageController.add(handleMessage(ev.data)));
   }
   
   /**
    * Internal function that listens for incoming messages
    */
   
-  void handleMessage(M data) {
-    _onMessageController.add(data);
+  M handleMessage(data) {
+    return data;
   }
   
   /**
    * Sends a message [M] to the channel
    */
   
-  void send(M message) {
-    // print('[$this] Sending $message to ${channel.label} via ${channel.protocol}');
+  void send(message) {
     channel.send(message);
   }
 }
@@ -101,8 +100,8 @@ class JsonProtocol extends RawProtocol<Object> {
   JsonProtocol(RtcDataChannel channel) : super(channel);
   
   @override
-  void handleMessage(String data) {
-    super.handleMessage(JSON.decode(data));
+  Object handleMessage(String data) {
+    return JSON.decode(data);
   }
   
   @override
