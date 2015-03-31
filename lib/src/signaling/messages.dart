@@ -1,5 +1,6 @@
 part of webrtc_utils.signaling;
 
+/// SignalingMessage interface
 abstract class SignalingMessage {
   String get type;
   
@@ -16,10 +17,7 @@ abstract class SignalingMessage {
   }
 }
 
-/**
- * A message that belongs to a room
- */
-
+/// Extends [SignalingMessage] by a room name
 abstract class RoomMessage extends SignalingMessage {
   final String roomName;
   
@@ -34,16 +32,13 @@ abstract class RoomMessage extends SignalingMessage {
   }
 }
 
+/// Message send if we are connected to the signaling server
 class WelcomeMessage extends SignalingMessage {
   static const String TYPE = 'welcome';
   String get type => TYPE;
   WelcomeMessage(int id) : super(id);
   WelcomeMessage.fromObject(Map message) : super.fromObject(message);
 }
-
-/**
- * Ice Candidate message
- */
 
 class IceCandidateMessage extends RoomMessage {
   static const String TYPE = 'rtc_ice_candidate';
@@ -95,10 +90,7 @@ class SessionDescriptionMessage extends RoomMessage {
   }
 }
 
-/**
- * Local client joined a room
- */
-
+/// Local client joined a room
 class RoomJoinedMessage extends RoomMessage {
   static const String TYPE = 'room_joined';
   String get type => TYPE;
@@ -110,6 +102,7 @@ class RoomJoinedMessage extends RoomMessage {
     peers = message['peers'];
 }
 
+/// 
 class RoomLeftMessage extends RoomMessage {
   static const String TYPE = 'room_left';
   String get type => TYPE;
@@ -117,6 +110,7 @@ class RoomLeftMessage extends RoomMessage {
     super.fromObject(message);
 }
 
+/// 
 class JoinRoomMessage extends RoomMessage {
   static const String TYPE = 'join_room';
   static const String KEY_PASSWORD = 'password';
@@ -137,6 +131,7 @@ class JoinRoomMessage extends RoomMessage {
   }
 }
 
+/// 
 class LeaveMessage extends RoomMessage {
   static const String TYPE = 'leave';
   String get type => TYPE;
@@ -145,6 +140,7 @@ class LeaveMessage extends RoomMessage {
     super.fromObject(message);
 }
 
+/// 
 class JoinMessage extends RoomMessage {
   static const String TYPE = 'join';
   String get type => TYPE;

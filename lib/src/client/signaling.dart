@@ -1,10 +1,7 @@
 part of webrtc_utils.client;
 
-/**
- * Interface for the signaling channel. The signaling channel is used to exchange
- * data between two peers.
- */
-
+/// Interface for the signaling channel. The signaling channel is used to exchange
+/// data between two peers.
 abstract class SignalingChannel {
   Stream<SignalingMessage> get onMessage;
   Stream<int> get onClose;
@@ -12,8 +9,7 @@ abstract class SignalingChannel {
   void send(SignalingMessage message);
 }
 
-
-
+/// An internal class that is used to convert objects to JSON format
 abstract class _JsonConverter implements _Converter {
   String encode(Object o) {
     return JSON.encode(o);
@@ -24,20 +20,16 @@ abstract class _JsonConverter implements _Converter {
   }
 }
 
+/// An interface to encode and decode data
 abstract class _Converter {
-  /**
-   * Encode message
-   */
-  
+  /// Encode message
   dynamic encode(dynamic o);
   
-  /**
-   * Decode message
-   */
-  
+  /// Decode message
   dynamic decode(dynamic o);
 }
 
+/// Internal class used to decode/encode [SignalingMessage]s
 class _MessageConverter extends _JsonConverter {
   String encode(SignalingMessage message) {
     return super.encode(message.toObject());
@@ -65,48 +57,27 @@ class _MessageConverter extends _JsonConverter {
   }
 }
 
-/**
- * A WebSocket implementation for the client side [SignalingChannel]
- */
-
+/// A WebSocket implementation for the client side [SignalingChannel]
 class WebSocketSignalingChannel implements SignalingChannel {
-  /**
-   * WebSocket instance
-   */
-  
+  /// WebSocket instance
   final WebSocket _ws;
   
-  /**
-   * Encoder to be used to convert a SignalingMessage for the WebSocket
-   */
-  
+  /// Encoder to be used to convert a SignalingMessage for the WebSocket
   final _MessageConverter _converter = new _MessageConverter();
   
-  /**
-   * StreamController for streams of messages from the websocket
-   */
-  
+  /// StreamController for streams of messages from the websocket
   final StreamController<SignalingMessage> _messageController = new StreamController.broadcast(); 
   Stream<SignalingMessage> get onMessage => _messageController.stream;
   
-  /**
-   * Stream of close events of this signaling channel
-   */
-
+  /// Stream of close events of this signaling channel
   Stream<int> get onClose => _onCloseController.stream;
   final StreamController<int> _onCloseController = new StreamController.broadcast();
   
-  /**
-   * Stream of open events of this signaling channel
-   */
-
+  /// Stream of open events of this signaling channel
   Stream get onOpen => _onOpenController.stream;
   final StreamController _onOpenController = new StreamController.broadcast(); 
   
-  /**
-   * Constructor: Tales a websocket Url and creates a connection using the "webrtc_signaling" protocol
-   */
-  
+  /// Constructor: Tales a websocket Url and creates a connection using the "webrtc_signaling" protocol
   WebSocketSignalingChannel(String webSocketUrl) :
     _ws = new WebSocket(webSocketUrl, 'webrtc_signaling') {
     // Setup message listener
@@ -129,10 +100,7 @@ class WebSocketSignalingChannel implements SignalingChannel {
     //print('[$this] Error');
   }
   
-  /**
-   * Sends a SignalingMessage through the WebSocket as a JSON string
-   */
-  
+  /// Sends a SignalingMessage through the WebSocket as a JSON string
   void send(SignalingMessage message) {
     if(_ws == null || _ws.readyState != WebSocket.OPEN) {
       throw "Unable to send message. WebSocket is not opened.";
@@ -141,10 +109,7 @@ class WebSocketSignalingChannel implements SignalingChannel {
     _ws.send(_converter.encode(message));
   }
   
-  /**
-   * Message handler that decodes a JSON string to SignalingMessage
-   */
-  
+  /// Message handler that decodes a JSON string to SignalingMessage
   void _onMessage(MessageEvent ev) {
     _messageController.add(_converter.decode(ev.data));
   }

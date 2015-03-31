@@ -1,14 +1,9 @@
-/**
- * An Example implementation of a signaling server
- * 
- * We are using a HttpServer and upgrade them to WebSockets
- * 
- * As a transfport protocol we use JSON
- */
-
+/// An Example implementation of a signaling server
+/// 
+/// We are using a HttpServer and upgrade them to WebSockets
+/// 
+/// As a transfport protocol we use JSON
 part of webrtc_utils.server;
-
-const String PROTOCOL = 'webrtc_signaling';
 
 class SignalingServer {
   int _id = 0;
@@ -19,12 +14,11 @@ class SignalingServer {
   
   String _protocol;
   
+  /// Constructor that takes an optional [_protocol] which defaults to [PROTOCOL]
+  
   SignalingServer([String this._protocol = PROTOCOL]);
   
-  /**
-   * Make sure the client sends the right protocol
-   */
-  
+  /// Make sure the client sends the right protocol
   String _protocolSelector(List<String> protocols) {
     if(protocols.contains(_protocol)) {
       return _protocol;
@@ -32,18 +26,12 @@ class SignalingServer {
     return null;
   }
   
-  /**
-   * Called for every HttpRequest
-   */
-  
+  /// Called for every HttpRequest
   void _onHttpRequest(HttpRequest request) {
     WebSocketTransformer.upgrade(request, protocolSelector: _protocolSelector).then(_onWebSocket);
   }
   
-  /**
-   * WebSocket connected to a room
-   */
-  
+  /// WebSocket connected to a room
   void _onWebSocket(WebSocket ws) {
     if(ws == null || ws.protocol != _protocol) {
       return;
@@ -97,10 +85,7 @@ class SignalingServer {
     });
   }
   
-  /**
-   * Handle join request from a peer
-   */
-  
+  /// Handle join request from a peer
   void _joinRoom(Peer peer, Map m) {
     Room room = rooms.putIfAbsent(m['room']['name'], () => new Room(m['room']['name'], m['password']));
     // Send room message with a list of current peers to the peer
@@ -114,10 +99,7 @@ class SignalingServer {
     peer.rooms.add(room);
   }
   
-  /**
-   * Create a HttpServer that listens on [port]
-   */
-  
+  /// Create a HttpServer that listens on [port]
   Future<SignalingServer> listen(int port) {
     return HttpServer.bind('0.0.0.0', port).then((HttpServer server) {
       server.listen(_onHttpRequest);

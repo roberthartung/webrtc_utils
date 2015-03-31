@@ -1,114 +1,69 @@
-/**
- * A Peer on the client side. This is a remote client. The local peer is not represented as a Peer object!
- * 
- * Only Peer2Peer connections will be wrapped by the Peer class
- */
-
+/// A Peer on the client side. This is a remote client. The local peer is not represented as a Peer object!
+/// 
+/// Only Peer2Peer connections will be wrapped by the Peer class
 part of webrtc_utils.client;
 
-/**
- * Peer interface class
- */
-
+/// Peer interface class
 abstract class Peer<C extends P2PClient> {
-  /**
-   * An integer representing the global id of this peer according to the
-   * [SignalingServer]. This id must be unique for each SignalingServer connection
-   * but might be re-used for multiple rooms.
-   */
-  
+  /// An integer representing the global id of this peer according to the
+  /// [SignalingServer]. This id must be unique for each SignalingServer connection
+  /// but might be re-used for multiple rooms.
   int get id;
   
-  /**
-   * The room this Peer belongs to.
-   */
-  
+  /// The room this Peer belongs to.
   PeerRoom get room;
   
-  /**
-   * A reference to the [P2PClient]
-   */
-  
+  /// A reference to the [P2PClient]
   C get client;
   
-  /**
-   * Map of [RtcDataChannel.label] to the channel
-   */
-  
+  /// Map of [RtcDataChannel.label] to the channel
   Map<String, RtcDataChannel> get channels;
   
-  /**
-   * Can be listened to, to get notified when a stream gets added
-   */
-  
+  /// Can be listened to, to get notified when a stream gets added
   Stream<MediaStreamEvent> get onAddStream;
   
-  /**
-   * Can be listened to, to get notified when a stream gets removed
-   */
-  
+  /// Can be listened to, to get notified when a stream gets removed
   Stream<MediaStreamEvent> get onRemoveStream;
   
-  /**
-   * Can be listened to, to get informed when a new [RtcDataChannel] was created.
-   * 
-   * Note: You have to wait for the [RtcDataChannel.onOpen] event to be able
-   * to send messages. 
-   */
-  
+  /// Can be listened to, to get informed when a new [RtcDataChannel] was created.
+  /// 
+  /// Note: You have to wait for the [RtcDataChannel.onOpen] event to be able
+  /// to send messages. 
   Stream<RtcDataChannel> get onChannel;
   
-  /**
-   * Signals to create a new [RtcDataChannel] with this peer.
-   */
-  
+  /// Signals to create a new [RtcDataChannel] with this peer.
   void createChannel(String label, [Map options = null]);
   
-  /**
-   * Adds a stream to this peer
-   * 
-   * The [ms] can be loaded using [window.navigator.getUserMedia].
-   * 
-   * The [mediaConstraints] map specifies mandatory/optional constraints for
-   * the stream.
-   * 
-   * TODO(rh): Example configuration
-   */
-  
+  /// Adds a stream to this peer
+  /// 
+  /// The [ms] can be loaded using [window.navigator.getUserMedia].
+  /// 
+  /// The [mediaConstraints] map specifies mandatory/optional constraints for
+  /// the stream.
+  /// 
+  /// TODO(rh): Example configuration
   void addStream(MediaStream ms, [Map<String,String> mediaConstraints]);
   
-  /**
-   * Removes a stream from this peer
-   */
-  
+  /// Removes a stream from this peer
   void removeStream(MediaStream ms);
 }
 
-/**
- * An interface for a protocol peer that extends the regular peer 
- */
-
+/// An interface for a protocol peer that extends the regular peer 
 abstract class ProtocolPeer<C extends P2PClient> extends Peer<C> {
-  /**
-   * Map of [RtcDataChannel.label] to a [DataChannelProtocol]
-   */
+  /// Map of [RtcDataChannel.label] to a [DataChannelProtocol]
 
   Map<String, DataChannelProtocol> get protocols;
   
-  /**
-   * Stream that can be listened to, to get notified when a new protocol is ready
-   * to be used. This means that this stream will fire events after the
-   * [RtcDataChannel.onOpen] event was fired and the underlying [RtcDataChanenl]
-   * is ready to use
-   */
+  /// Stream that can be listened to, to get notified when a new protocol is ready
+  /// to be used. This means that this stream will fire events after the
+  /// [RtcDataChannel.onOpen] event was fired and the underlying [RtcDataChanenl]
+  /// is ready to use
   
   Stream<DataChannelProtocol> get onProtocol;
 }
 
-/**
- * A peer represents a machine/browser in the system. This is the internal
- * implementation of the [Peer] interface.
- */
+/// A peer represents a machine/browser in the system. This is the internal
+/// implementation of the [Peer] interface.
 
 class _Peer<C extends _P2PClient> implements Peer<C> {
   final int id;
@@ -130,10 +85,7 @@ class _Peer<C extends _P2PClient> implements Peer<C> {
   
   // int _channelId = 1;
   
-  /**
-   * Internal constructor that is called from the [P2PClient]
-   */
-  
+  /// Internal constructor that is called from the [P2PClient]
   _Peer(this.room, this.id, this.client, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}])
     : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
     _pc.onNegotiationNeeded.listen((Event ev) { 
@@ -198,11 +150,9 @@ class _Peer<C extends _P2PClient> implements Peer<C> {
   String toString() => 'Peer#$id';
 }
 
-/**
- * The [_ProtocolPeer] extends [_Peer] that by adding a [DataChannelProtocol] on top to the [RtcDataChannel].
- * It uses the [RtcDataChannel.protocol] property and a [ProtocolProvider] to provide application
- * specific protocols.
- */
+/// The [_ProtocolPeer] extends [_Peer] that by adding a [DataChannelProtocol] on top to the [RtcDataChannel].
+/// It uses the [RtcDataChannel.protocol] property and a [ProtocolProvider] to provide application
+/// specific protocols.
 
 class _ProtocolPeer extends _Peer<_ProtocolP2PClient> implements ProtocolPeer<_ProtocolP2PClient> {
   Stream<DataChannelProtocol> get onProtocol => _onProtocolController.stream;
@@ -210,10 +160,7 @@ class _ProtocolPeer extends _Peer<_ProtocolP2PClient> implements ProtocolPeer<_P
   
   final Map<String, DataChannelProtocol> protocols = {};
   
-  /**
-   * Library-internal constructor
-   */
-  
+  /// Library-internal constructor
   _ProtocolPeer(room, id, client) : super(room, id, client);
   
   @override
@@ -232,9 +179,6 @@ class _ProtocolPeer extends _Peer<_ProtocolP2PClient> implements ProtocolPeer<_P
     }
   }
   
-  /**
-   * Returns a string representation for this ProtocolPeer
-   */
-  
+  /// Returns a string representation for this ProtocolPeer
   String toString() => 'ProtocolPeer#$id';
 }

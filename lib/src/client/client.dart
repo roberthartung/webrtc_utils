@@ -1,14 +1,8 @@
 part of webrtc_utils.client;
 
-/**
- * Interface for the most simple peer-to-peer client
- */
-
+/// Interface for the most simple peer-to-peer client
 abstract class P2PClient<R extends PeerRoom> {
-  /**
-   * Local ID assigned by the signaling server 
-   */
-
+  /// Local ID assigned by the signaling server 
   int get id;
   
   Stream<int> get onConnect;
@@ -22,89 +16,63 @@ abstract class P2PClient<R extends PeerRoom> {
   void join(String roomName, [String password = null]);
 }
 
-/**
- * Interface for 
- */
-
+/// Interface for 
 abstract class ProtocolP2PClient<R extends ProtocolPeerRoom>
     extends P2PClient<R> {
   void setProtocolProvider(ProtocolProvider provider);
 }
 
-/**
- * Basic P2P Client class
- */
-
+/// Basic P2P Client class
 abstract class _P2PClient<R extends _PeerRoom, P extends _Peer> implements P2PClient<R> {
-  /**
-   * The signaling channel to use for establishing a connection
-   */
+  /// The signaling channel to use for establishing a connection
   
   final SignalingChannel _signalingChannel;
   
-  /**
-   * The rtcConfiguration Map that specifies iceServers
-   */
-    
+  /// The rtcConfiguration Map that specifies iceServers
+
   final Map _rtcConfiguration;
   
   int _id;
   int get id => _id;
   
-  /**
-   * List of rooms the client is participating in
-   */
+  /// List of rooms the client is participating in
   
   final Map<String, _PeerRoom> rooms = {};
   
-  /**
-   * Event stream for when the connection to the signaling server is established
-   */
+  /// Event stream for when the connection to the signaling server is established
   
   Stream<int> get onConnect => _onConnectController.stream;
   final StreamController<int> _onConnectController = new StreamController.broadcast();
   
-  /**
-   * Event stream for when the connection to the signaling server is established
-   */
+  /// Event stream for when the connection to the signaling server is established
   
   Stream get onDisconnect => _onDisconnectController.stream;
   final StreamController _onDisconnectController = new StreamController.broadcast();
   
-  /**
-   * Event stream when you join a room
-   */
+  /// Event stream when you join a room
   
   Stream<_PeerRoom> get onJoinRoom => _onJoinRoomController.stream;
   final StreamController<_PeerRoom> _onJoinRoomController = new StreamController.broadcast();
   
-  /**
-   * Event stream when you leave a room
-   */
+  /// Event stream when you leave a room
   
   Stream<_PeerRoom> get onLeaveRoom => _onLeaveRoomController.stream;
   final StreamController<_PeerRoom> _onLeaveRoomController = new StreamController.broadcast();
   
-  /**
-   * Constructor
-   */
+  /// Constructor
   
   _P2PClient(this._signalingChannel, this._rtcConfiguration) {
     _signalingChannel.onMessage.listen(_onSignalingMessage);
     _signalingChannel.onClose.listen((int reason) => _onDisconnectController.add(reason));
   }
   
-  /**
-   * Joins a [room] with an optional [password]
-   */
+  /// Joins a [room] with an optional [password]
   
   void join(String roomName, [String password = null]) {
     _signalingChannel.send(new JoinRoomMessage(roomName, password, _id));
   }
   
-  /**
-   * Internal handler for when new receive a [SignalingMessage]
-   */
+  /// Internal handler for when new receive a [SignalingMessage]
   
   void _onSignalingMessage(SignalingMessage sm) {
     // Welcome message
@@ -144,9 +112,7 @@ abstract class _P2PClient<R extends _PeerRoom, P extends _Peer> implements P2PCl
     }
   }
   
-  /**
-   * Create peer, function declared here instead of in [R] so we can override it easily!
-   */
+  /// Create peer, function declared here instead of in [R] so we can override it easily!
   
   P createPeer(_PeerRoom room, int peerId) {
     return new _Peer(room, peerId, this);
@@ -157,27 +123,16 @@ abstract class _P2PClient<R extends _PeerRoom, P extends _Peer> implements P2PCl
   }
 }
 
-/**
- * A P2PClient that uses a [DataChannelProtocol] on top of a [_Peer]s [RtcDataChannel]
- */
-
+/// A P2PClient that uses a [DataChannelProtocol] on top of a [_Peer]s [RtcDataChannel]
 class _ProtocolP2PClient extends _P2PClient<_ProtocolPeerRoom, _ProtocolPeer> implements ProtocolP2PClient<_ProtocolPeerRoom> {
-  /**
-   * Protocol provider
-   */
-  
+  /// Instance of a protocol provider that is used to instantiate protocols for
+  /// the data channel
   ProtocolProvider _protocolProvider = new DefaultProtocolProvider();
   
-  /**
-   * Library-Internal constructor. For arguments see [P2PClient]
-   */
-  
+  /// Library-Internal constructor. For arguments see [P2PClient]
   _ProtocolP2PClient(signalingChannel, rtcConfiguration) : super(signalingChannel, rtcConfiguration);
   
-  /**
-   * Adds a protocol provider
-   */
-  
+  /// Adds a protocol provider
   void setProtocolProvider(ProtocolProvider provider) {
     _protocolProvider = provider;
   }
@@ -193,18 +148,12 @@ class _ProtocolP2PClient extends _P2PClient<_ProtocolPeerRoom, _ProtocolPeer> im
   }
 }
 
-/**
- * A WebSocket implementation for a P2P client
- */
-
-class WebSocketP2PClient extends _P2PClient<_PeerRoom, _Peer> /*implements P2PClient<_PeerRoom>*/ {
+/// A WebSocket implementation for a P2P client
+class WebSocketP2PClient extends _P2PClient<_PeerRoom, _Peer> {
   WebSocketP2PClient(String webSocketUrl, Map _rtcConfiguration) : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
 }
 
-/**
- * A WebSocket implementation for a protocol based P2P client
- */
-
-class WebSocketProtocolP2PClient extends _ProtocolP2PClient /*implements ProtocolP2PClient<_ProtocolPeerRoom>*/ {
+/// A WebSocket implementation for a protocol based P2P client
+class WebSocketProtocolP2PClient extends _ProtocolP2PClient {
   WebSocketProtocolP2PClient(String webSocketUrl, Map _rtcConfiguration) : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
 }
