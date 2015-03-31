@@ -16,7 +16,6 @@ library webrtc_utils.client;
 
 import 'dart:async' show Future, Stream, StreamController;
 import 'signaling.dart';
-import 'converter.dart' show JsonConverter;
 import 'dart:convert' show JSON;
 import 'dart:html' show RtcDataChannel, RtcDataChannelEvent, RtcPeerConnection, Event, RtcIceCandidate, RtcIceCandidateEvent, MessageEvent, CloseEvent, WebSocket, RtcSessionDescription, MediaStream, MediaStreamEvent;
 
@@ -24,9 +23,7 @@ part 'src/client/peer.dart';
 part 'src/client/room.dart';
 part 'src/client/client.dart';
 part 'src/client/protocol.dart';
-
-part 'src/client/signaling/channel.dart';
-part 'src/client/signaling/websocket.dart';
+part 'src/client/signaling.dart';
 
 /**
  * A const list of iceServers that you can use to determine the client's public
@@ -34,7 +31,7 @@ part 'src/client/signaling/websocket.dart';
  */
 
 const List iceServers = const [
-  const {'url':'stun:stun01.sipphone.com'},
+  //const {'url':'stun:stun01.sipphone.com'},
   const {'url':'stun:stun.ekiga.net'},
   const {'url':'stun:stun.fwdnet.net'},
   const {'url':'stun:stun.ideasip.com'},

@@ -1,6 +1,44 @@
 part of webrtc_utils.client;
 
-class MessageConverter extends JsonConverter {
+/**
+ * Interface for the signaling channel. The signaling channel is used to exchange
+ * data between two peers.
+ */
+
+abstract class SignalingChannel {
+  Stream<SignalingMessage> get onMessage;
+  Stream<int> get onClose;
+  Stream get onOpen;
+  void send(SignalingMessage message);
+}
+
+
+
+abstract class _JsonConverter implements _Converter {
+  String encode(Object o) {
+    return JSON.encode(o);
+  }
+  
+  Object decode(String s) {
+    return JSON.decode(s);
+  }
+}
+
+abstract class _Converter {
+  /**
+   * Encode message
+   */
+  
+  dynamic encode(dynamic o);
+  
+  /**
+   * Decode message
+   */
+  
+  dynamic decode(dynamic o);
+}
+
+class _MessageConverter extends _JsonConverter {
   String encode(SignalingMessage message) {
     return super.encode(message.toObject());
   }
@@ -28,7 +66,7 @@ class MessageConverter extends JsonConverter {
 }
 
 /**
- * A WebSocket implementation for the client side SignalingChannel
+ * A WebSocket implementation for the client side [SignalingChannel]
  */
 
 class WebSocketSignalingChannel implements SignalingChannel {
@@ -42,7 +80,7 @@ class WebSocketSignalingChannel implements SignalingChannel {
    * Encoder to be used to convert a SignalingMessage for the WebSocket
    */
   
-  final MessageConverter _converter = new MessageConverter();
+  final _MessageConverter _converter = new _MessageConverter();
   
   /**
    * StreamController for streams of messages from the websocket
@@ -83,12 +121,12 @@ class WebSocketSignalingChannel implements SignalingChannel {
   }
   
   void _onClose(CloseEvent ev) {
-    print('[$this] Closed: ${ev.reason}');
+    //print('[$this] Closed: ${ev.reason}');
     _onCloseController.add(ev.code);
   }
   
   void _onError(Event ev) {
-    print('[$this] Error');
+    //print('[$this] Error');
   }
   
   /**

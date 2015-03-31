@@ -7,50 +7,98 @@
 
 part of webrtc_utils.client;
 
-class PeerRoom<P extends Peer, C extends P2PClient> {
+/**
+ * Interface for a room that holds a list of peers
+ */
+
+abstract class PeerRoom<P extends Peer, C extends P2PClient> {
   /**
    * Name of the room
    */
   
-  final String name;
-
+  String get name;
+  
   /**
    * Client instance for this room - passed to the peer to exchange signaling messages
    */
   
-  final C client;
+  C get client;
+  
+  /**
+   * Iterable to iterate over all peers in this room
+   */
+  
+  Iterable<P> get peers;
+  
+  /**
+   * Listen to this stream to get notified when a peer leaves the room
+   */
+  
+  Stream<P> get onPeerJoin;
+  
+  /**
+   * Listen to this stream to get notified when a peer leaves the room
+   */
+  
+  Stream<P> get onPeerLeave;
+  
+  /**
+   * Call this method when you want to send a message to all peers that have
+   * a [RtcDataChannel] with label [channelLabel]. The type of [message] should
+   * compatible with [RtcDataChannel.send].
+   * 
+   * Returns the number of peers that the message was NOT delivered to.
+   */
+  
+  int sendToChannel(String channelLabel, dynamic message);
+}
+
+/**
+ * 
+ */
+
+abstract class ProtocolPeerRoom<P extends Peer, C extends ProtocolP2PClient> extends PeerRoom<P,C> {
+  /**
+   * Call this method when you want to send a message to all peers that have
+   * a [DataChannelProtocol] with an [RtcDataChannel.label] of [channelLabel].
+   * 
+   * The type of [message] should compatible with your protocol. See
+   * [DataChannelProtocol] and [ProtocolProvider]
+   * 
+   * Returns the number of peers that the message was NOT delivered to.
+   */
+  
+  void sendToProtocol(String channelLabel, dynamic message);
+}
+
+/**
+ * 
+ */
+
+class _PeerRoom<P extends _Peer, C extends _P2PClient> implements PeerRoom<P, C> {
+  final String name;
+
+  final _P2PClient client;
   
   /**
    * Internal Map of peers
    */
   
-  final Map<int, P> _peers = {};
+  final Map<int, _Peer> _peers = {};
   
-  /**
-   * Getter of Peers
-   */
-  
-  Iterable<P> get peers => _peers.values;
+  Iterable<_Peer> get peers => _peers.values;
 
+  Stream<_Peer> get onPeerJoin => _onPeerJoinController.stream;
+  StreamController<_Peer> _onPeerJoinController = new StreamController.broadcast();
+  
+  StreamController<_Peer> _onPeerLeaveController = new StreamController.broadcast();
+  Stream<_Peer> get onPeerLeave => _onPeerLeaveController.stream;
+  
   /**
-   * Stream of [P] objects who joined the channel
+   * Constructor
    */
   
-  Stream<P> get onPeerJoin => _onPeerJoinController.stream;
-  StreamController<P> _onPeerJoinController = new StreamController.broadcast();
-  
-  /**
-   * Stream of [P] objects who left this channel
-   */
-  
-  StreamController<P> _onPeerLeaveController = new StreamController.broadcast();
-  Stream<P> get onPeerLeave => _onPeerLeaveController.stream;
-
-  /**
-   * Library internal constructor
-   */
-  
-  PeerRoom._(this.client, this.name);
+  _PeerRoom(this.client, this.name);
   
   /**
    * Signaling message received from the signaling server
@@ -58,9 +106,9 @@ class PeerRoom<P extends Peer, C extends P2PClient> {
    * [IceCandidateMessage] message. The rest is handled directly by the client
    */
   
-  void _onSignalingMessage(SignalingMessage sm) {
+  void onSignalingMessage(SignalingMessage sm) {
     // In this case the peerId of the [SignalingMessage] is the source peerId
-    final P peer = _peers[sm.peerId];
+    final _Peer peer = _peers[sm.peerId];
     final RtcPeerConnection pc = peer._pc;
     
     if(sm is SessionDescriptionMessage) {
@@ -87,7 +135,7 @@ class PeerRoom<P extends Peer, C extends P2PClient> {
    * Add peer to the room and fire event
    */
   
-  void _addPeer(P peer) {
+  void addPeer(_Peer peer) {
     _peers[peer.id] = peer;
     _onPeerJoinController.add(peer);
   }
@@ -96,7 +144,7 @@ class PeerRoom<P extends Peer, C extends P2PClient> {
    * Remove peer from room and fire event
    */
   
-  void _removePeer(int peerId) {
+  void removePeer(int peerId) {
     _onPeerLeaveController.add(_peers.remove(peerId));
   }
   
@@ -109,7 +157,7 @@ class PeerRoom<P extends Peer, C extends P2PClient> {
   
   int sendToChannel(String channelLabel, dynamic message) {
     int notSendCount = 0;
-    peers.forEach((Peer peer) {
+    peers.forEach((_Peer peer) {
       final RtcDataChannel channel = peer.channels[channelLabel];
       if(channel != null && channel.readyState == 'open') {
         channel.send(message);
@@ -126,16 +174,22 @@ class PeerRoom<P extends Peer, C extends P2PClient> {
  * a [DataChannelProtocol] on top of [RtcDataChannel]
  */
 
-class ProtocolPeerRoom extends PeerRoom<ProtocolPeer, ProtocolP2PClient> {
-  ProtocolPeerRoom._(client, name) : super._(client, name);
+class _ProtocolPeerRoom
+    extends _PeerRoom<_ProtocolPeer, _ProtocolP2PClient>
+    implements ProtocolPeerRoom<_ProtocolPeer, _ProtocolP2PClient> {
+  _ProtocolPeerRoom(client, name) : super(client, name);
   
-  void sendToProtocol(String channelLabel, dynamic message) {
-    peers.forEach((ProtocolPeer peer) {
+  int sendToProtocol(String channelLabel, dynamic message) {
+    int notSendCount = 0;
+    peers.forEach((_ProtocolPeer peer) {
       final DataChannelProtocol protocol = peer.protocols[channelLabel];
       if(protocol != null && protocol.channel.readyState == 'open') {
         print('[$this] Sending $message to $peer/$channelLabel via $protocol');
         protocol.send(message);
+      } else {
+        notSendCount++;
       }
     });
+    return notSendCount;
   }
 }

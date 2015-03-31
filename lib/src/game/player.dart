@@ -23,10 +23,76 @@ abstract class NamedPlayer {
 */
 
 /**
- * A general player in the game that belongs to a room and has an id
+ * General interface of any player in the game
  */
 
 abstract class Player<R extends GameRoom> {
+  R get room;
+  
+  int get id;
+  
+  bool get isLocal;
+}
+
+/**
+ * 
+ */
+
+abstract class LocalPlayer<R extends GameRoom> extends Player<R> {
+  
+}
+
+/**
+ * Interface of a remote player
+ */
+
+abstract class RemotePlayer<R extends GameRoom, P extends ProtocolPeer, C extends DataChannelProtocol> extends Player<R> {
+  Stream get onGameMessage;
+  
+  P get peer;
+}
+
+/**
+ * Interface for a synchronized player in the game
+ */
+
+abstract class SynchronizedPlayer {
+  SynchronizedGameRoom get room;
+  
+  void tick(int tick);
+  
+  /**
+   * Handle a SynchronizedMessage
+   */
+  
+  void handleMessage(GameMessage message);
+}
+
+abstract class SynchronizedLocalPlayer extends LocalPlayer<SynchronizedGameRoom> with SynchronizedPlayer {
+  
+}
+
+/**
+ * Interface for a synchronized remote player
+ */
+
+abstract class SynchronizedRemotePlayer<C extends DataChannelProtocol> extends RemotePlayer<SynchronizedGameRoom, ProtocolPeer, C> with SynchronizedPlayer {
+  double get timeDifference;
+
+  double get ping;
+  
+  Future<JsonProtocol> getSynchronizationChannel();
+}
+
+// ----------------------------------------------------------------------------
+
+/**
+ * A general player in the game that belongs to a room and has an id
+ */
+
+abstract class DefaultPlayer<R extends GameRoom> {
+  bool get isLocal => this is LocalPlayer;
+  
   /**
    * The room this player belongs to
    */
@@ -43,33 +109,20 @@ abstract class Player<R extends GameRoom> {
   final int id;
 
   /**
-   * Getter to check if the player is local
-   */
-
-  bool get isLocal => this is LocalPlayer;
-
-  /**
    * Constructor
    */
 
-  Player._(this.room, this.id);
+  DefaultPlayer(this.room, this.id);
 }
 
 /**
- * Local version of the player
- */
-
-abstract class LocalPlayer<R extends GameRoom> extends Player<R> {
-  LocalPlayer(R room, int id) : super._(room, id);
-}
-
-/**
- * A remote player that will use a [Peer] and we will automatically create a
+ * A remote player that will use a [_Peer] and we will automatically create a
  * [RtcDataChannel] using the label 'game'.
  */
 
-abstract class RemotePlayer<R extends GameRoom, P extends ProtocolPeer, C extends DataChannelProtocol>
-    extends Player<R> {
+abstract class DefaultRemotePlayer<R extends GameRoom, P extends ProtocolPeer, C extends DataChannelProtocol>
+    extends DefaultPlayer<R>
+    implements RemotePlayer<R,P,C> {
   /**
    * The peer connection to this player
    */
@@ -87,9 +140,10 @@ abstract class RemotePlayer<R extends GameRoom, P extends ProtocolPeer, C extend
   Stream get onGameMessage => _onGameMessageController.stream;
   StreamController _onGameMessageController = new StreamController.broadcast();
 
-  RemotePlayer(R room, P peer)
-      : super._(room, peer.id),
+  DefaultRemotePlayer(R room, P peer)
+      : super(room, peer.id),
         this.peer = peer {
+    print('[$this] Peer: ${P}/${peer.runtimeType}');
     peer.onProtocol
         .firstWhere((DataChannelProtocol protocol) => protocol.channel.label == 'game')
         .then((C protocol) {
@@ -114,9 +168,7 @@ abstract class RemotePlayer<R extends GameRoom, P extends ProtocolPeer, C extend
  * Basic class for the local and remote synchronized player
  */
 
-abstract class SynchronizedPlayer {
-  SynchronizedGameRoom get room;
-  
+abstract class DefaultSynchronizedPlayer implements SynchronizedPlayer {
   /**
    * The message queue holding on to the messages until the point in time is reached.
    */
@@ -148,18 +200,11 @@ abstract class SynchronizedPlayer {
    */
   
   void _synchronizeMessage(SynchronizedGameMessage message) {
-    if (!room._isSynchronized) {
+    if (!room.isSynchronized) {
       throw new StateError("Room is not synchronized. Unable to synchronize message $message for $this");
     }
-    // TODO(rh): We cannot use this function for both local and remote players
     _messageQueue.add(message.tick, message.message);
   }
-  
-  /**
-   * Handle a SynchronizedMessage
-   */
-  
-  void handleMessage(GameMessage message);
 }
 
 /**
@@ -168,9 +213,9 @@ abstract class SynchronizedPlayer {
  * The generic type is the GameProtocol type you are using
  */
 
-abstract class SynchronizedRemotePlayer<P extends DataChannelProtocol>
-    extends RemotePlayer<SynchronizedGameRoom, ProtocolPeer, P>
-    with SynchronizedPlayer {
+abstract class DefaultSynchronizedRemotePlayer<P extends DataChannelProtocol>
+    extends DefaultRemotePlayer<SynchronizedGameRoom, ProtocolPeer, P> with DefaultSynchronizedPlayer
+    implements SynchronizedRemotePlayer<P> {
       
   Completer<JsonProtocol> _synchronizationChannelCompleter = new Completer();
 
@@ -182,7 +227,7 @@ abstract class SynchronizedRemotePlayer<P extends DataChannelProtocol>
   double _ping = null;
   double get ping => _ping;
   
-  SynchronizedRemotePlayer(SynchronizedGameRoom room, ProtocolPeer peer)
+  DefaultSynchronizedRemotePlayer(SynchronizedGameRoom room, ProtocolPeer peer)
       : super(room, peer) {
     // Wait for first protocol with correct label
     // then listen for messages on that protocol
@@ -204,9 +249,6 @@ abstract class SynchronizedRemotePlayer<P extends DataChannelProtocol>
     // If a message is received, it will be synchronized by putting it into
     // this players message queue
     getGameChannel().then((P gameChannel) {
-      // Sub ping from time because it passed over network
-      // _synchronizeMessage(message['time'] - remotePlayer.ping, message)
-      // TODO(rh): Substract ping!!
       gameChannel.onMessage.listen((SynchronizedGameMessage message) =>
           _messageQueue.add(message.tick, message.message));
     });
@@ -261,14 +303,63 @@ abstract class SynchronizedRemotePlayer<P extends DataChannelProtocol>
  * Basic class for the synchronized player
  */
 
-abstract class SynchronizedLocalPlayer extends LocalPlayer<SynchronizedGameRoom>
-    with SynchronizedPlayer {
+abstract class DefaultSynchronizedLocalPlayer extends DefaultPlayer with DefaultSynchronizedPlayer implements SynchronizedLocalPlayer {
 
   /**
    * When executing events locally, they are scheduled with a delay
    */
 
-  SynchronizedLocalPlayer(SynchronizedGameRoom room, int id) : super(room, id) {
+  DefaultSynchronizedLocalPlayer(SynchronizedGameRoom room, int id) : super(room, id) {
     
+  }
+}
+
+/**
+ * A Message Queue for the [SynchronizedGameRoom]
+ */
+
+class MessageQueue<M> {
+  /**
+   * Use a SplayTreeMap so we can sort by time
+   */
+  
+  SplayTreeMap<int, Queue<M>> queue = new SplayTreeMap();
+  
+  /**
+   * Getter if this queue is empty
+   */
+  
+  bool get isEmpty => queue.isEmpty;
+  
+  /**
+   * Adds a message at the given point in time
+   */
+  
+  void add(int time, M message) {
+    queue.putIfAbsent(time, () => new Queue<M>()).add(message);
+  }
+  
+  /**
+   * Retrieve and remove the element, throws StateError if this queue is empty
+   */
+  
+  Queue<M> poll() {
+    if(queue.isEmpty) {
+      throw new StateError("MessageQueue is empty");
+    }
+    
+    return queue.remove(peekKey());
+  }
+  
+  /**
+   * Peeks at the next key, throws StateError if this queue is empty
+   */
+  
+  int peekKey() {
+    if(queue.isEmpty) {
+      throw new StateError("MessageQueue is empty");
+    }
+    
+    return queue.firstKey();
   }
 }

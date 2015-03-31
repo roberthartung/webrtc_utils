@@ -76,7 +76,7 @@ class ClickMessage implements GameMessage {
  * An example of a local player
  */
 
-class MyLocalPlayer extends SynchronizedLocalPlayer with DemoPlayer {
+class MyLocalPlayer extends DefaultSynchronizedLocalPlayer with DemoPlayer {
   CanvasElement _canvas;
   
   MyLocalPlayer(SynchronizedGameRoom gameRoom, int id) : super(gameRoom, id) {
@@ -107,10 +107,8 @@ class MyLocalPlayer extends SynchronizedLocalPlayer with DemoPlayer {
  * An example of a remote player
  */
 
-class MyRemotePlayer extends SynchronizedRemotePlayer with DemoPlayer {
-  MyRemotePlayer(SynchronizedGameRoom room, Peer peer) : super(room, peer) {
-   // _setupListener();
-  }
+class MyRemotePlayer extends DefaultSynchronizedRemotePlayer with DemoPlayer {
+  MyRemotePlayer(SynchronizedGameRoom room, Peer peer) : super(room, peer);
   
   /**
    * Method called by the room, will make a tick on each circle/object in the game
@@ -179,21 +177,34 @@ class MyProtocolProvider extends DefaultProtocolProvider {
   }
 }
 
+class MyPlayerFactory implements PlayerFactory<MyLocalPlayer, MyRemotePlayer> {
+  @override
+  MyLocalPlayer createLocalPlayer(GameRoom room, int localId) {
+    return new MyLocalPlayer(room, localId);
+  }
+  
+  @override
+  MyRemotePlayer createRemotePlayer(GameRoom room, Peer peer) {
+    return new MyRemotePlayer(room, peer);
+  }
+}
+
 /**
  * A synchronized game example. Overrides only the createGameRoom method so
  * you can create a game specific room
  */
 
-class MySynchronizedGame extends SynchronizedP2PGame<MyLocalPlayer,MyRemotePlayer> {
+class MyGame extends SynchronizedWebSocketP2PGame<MyLocalPlayer, MyRemotePlayer> {
   CanvasElement _canvas;
   
   CanvasRenderingContext2D _ctx;
   
   int _fpsCounter = 0;
   
-  MySynchronizedGame(String webSocketUrl, Map rtcConfiguration)
+  MyGame(String webSocketUrl, Map rtcConfiguration)
     : super(webSocketUrl, rtcConfiguration) {
     setProtocolProvider(new MyProtocolProvider());
+    setPlayerFactory(new MyPlayerFactory());
     
     _canvas = querySelector('#canvas');
     _ctx = _canvas.getContext('2d');
@@ -225,25 +236,15 @@ class MySynchronizedGame extends SynchronizedP2PGame<MyLocalPlayer,MyRemotePlaye
       });
     });
   }
-  
-  @override
-  MyLocalPlayer createLocalPlayer(GameRoom room, int localId) {
-    return new MyLocalPlayer(room, localId);
-  }
-  
-  @override
-  MyRemotePlayer createRemotePlayer(GameRoom room, Peer peer) {
-    return new MyRemotePlayer(room, peer);
-  }
 }
 
 /**
- * Main method that will create the [MySynchronizedGame] and
+ * Main method that will create the [MyGame] and
  * join a room once connected to the signaling server
  */
 
 void main() {
-  final SynchronizedP2PGame game = new MySynchronizedGame(webSocketUrl, rtcConfiguration);
+  final SynchronizedWebSocketP2PGame game = new MyGame(webSocketUrl, rtcConfiguration);
   
   Chain.capture(() {
     game.onConnect.listen((_) {

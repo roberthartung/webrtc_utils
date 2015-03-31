@@ -7,10 +7,48 @@
 part of webrtc_utils.game;
 
 /**
- * A room that holds [Player]s instead of [Peer]
+ * Interface for the GameRoom
  */
 
-class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends RemotePlayer, P extends Player> {
+abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends RemotePlayer, P extends Player> {
+  G get game;
+  
+  bool get isOwner;
+  
+  L get localPlayer;
+  
+  ProtocolPeerRoom get room;
+  
+  List<P> get players;
+  
+  Iterable<R> get remotePlayers;
+  
+  Stream<R> get onPlayerJoin;
+  
+  Stream<R> get onPlayerLeave;
+  
+  Stream<P> get onGameOwnerChanged;
+}
+
+abstract class SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer, P extends Player> extends GameRoom<G, L, R, P> {
+  double get globalTime;
+  
+  num get maxPing;
+  
+  num get timeDifferenceToMaster;
+  
+  Stream get onSynchronizationStateChanged;
+  
+  bool get isSynchronized;
+  
+  void synchronizeMessage(GameMessage message, {int tickDelay: 1});
+}
+
+/**
+ * A room that holds [Player]s instead of [_Peer]
+ */
+
+class _GameRoom<G extends _P2PGame, L extends LocalPlayer, R extends RemotePlayer, P extends Player> implements GameRoom<G,L,R,P> {
   final G game;
   
   /**
@@ -36,9 +74,10 @@ class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends RemotePlayer,
    * A getter to filter the players list for remote players only (used by some mixins)
    * 
    * TODO(rh): Can we omit the 'as Iterable<R>' somehow?
+   * TODO(rh): When the generic type is omitted it will be dynamic so this check will fail
    */
  
-  Iterable<R> get remotePlayers => players.where((P p) => (p is R)) as Iterable<R>;
+  Iterable<R> get remotePlayers => players.where((P p) =>  (p is R) /*!p.isLocal*/) as Iterable<R>;
   
   /**
    * The local player instance
@@ -75,13 +114,14 @@ class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends RemotePlayer,
   ProtocolPeerRoom get room => _room;
   final ProtocolPeerRoom _room;
   
-  GameRoom._(this.game, this._room) {
+  _GameRoom(this.game, this._room) {
+    
     // _localPlayer = createLocalPlayer(game.id);
-    _localPlayer = game.createLocalPlayer(this, game.id);
+    _localPlayer = game.playerFactory.createLocalPlayer(this, game.id);
     _playerJoined(_localPlayer);
     _room.peers.forEach((Peer peer) {
       // R player = createRemotePlayer(peer);
-      R player = game.createRemotePlayer(this, peer);
+      R player = game.playerFactory.createRemotePlayer(this, peer);
       peerToPlayer[peer] = player;
       _playerJoined(player);
     });
@@ -90,7 +130,7 @@ class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends RemotePlayer,
     // When a new player joins
     _room.onPeerJoin.listen((Peer peer) {
       // R player = createRemotePlayer(peer);
-      R player = game.createRemotePlayer(this, peer);
+      R player = game.playerFactory.createRemotePlayer(this, peer);
       peerToPlayer[peer] = player;
       _playerJoined(player);
       // Create channel here and not in RemotePlayer constructor because we only want create channels
@@ -125,20 +165,22 @@ class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends RemotePlayer,
    * Do cleanup after disconnect or room leave
    */
   
+  /*
   void cleanup() {
     _localPlayer = null;
     players.clear();
     _gameOwner = null;
     peerToPlayer.clear();
   }
+  */
   
   /**
    * Called for every Player (both local and remote players)
    */
   
   void _playerJoined(Player player) {
-    _onPlayerJoinStreamController.add(player);
     players.add(player);
+    _onPlayerJoinStreamController.add(player);
   }
   
   /**
@@ -159,74 +201,15 @@ class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends RemotePlayer,
   }
 }
 
-
-
-
-
-
-/**
- * A Message Queue for the [SynchronizedGameRoom]
- */
-
-class MessageQueue<M> {
-  /**
-   * Use a SplayTreeMap so we can sort by time
-   */
-  
-  SplayTreeMap<int, Queue<M>> queue = new SplayTreeMap();
-  
-  /**
-   * Getter if this queue is empty
-   */
-  
-  bool get isEmpty => queue.isEmpty;
-  
-  /**
-   * Adds a message at the given point in time
-   */
-  
-  void add(int time, M message) {
-    queue.putIfAbsent(time, () => new Queue<M>()).add(message);
-  }
-  
-  /**
-   * Retrieve and remove the element, throws StateError if this queue is empty
-   */
-  
-  Queue<M> poll() {
-    if(queue.isEmpty) {
-      throw new StateError("MessageQueue is empty");
-    }
-    
-    return queue.remove(peekKey());
-  }
-  
-  /**
-   * Peeks at the next key, throws StateError if this queue is empty
-   */
-  
-  int peekKey() {
-    if(queue.isEmpty) {
-      throw new StateError("MessageQueue is empty");
-    }
-    
-    return queue.firstKey();
-  }
-}
-
-
-
-
-
-
-
-
 /**
  * Synchronized version of a game room. The gameroom will send a 'ping' message to all
  * remote players every 1 second. 
  */
 
-class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer> extends GameRoom<G,L,R,Player> {
+class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer>
+    extends _GameRoom<G,L,R,Player>
+    implements SynchronizedGameRoom<G,L,R,Player> {
+  
   /**
    * Timer for this room that seconds a ping every second
    */
@@ -244,9 +227,8 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
    */
   
   double get globalTime => isOwner ? window.performance.now() : window.performance.now() + timeDifferenceToMaster;
-  int get globalTick => globalTime ~/ (1000.0 / game.targetTickRate);
-  
-  int toGlobalTick(int delay) => ((globalTime + maxPing) ~/ (1000.0 / game.targetTickRate)) + delay;
+  // int get globalTick => globalTime ~/ (1000.0 / game.targetTickRate);
+  // int toGlobalTick(int delay) => ((globalTime + maxPing) ~/ (1000.0 / game.targetTickRate)) + delay;
   
   /**
    * Internal variable for holding the maximum ping. The maximum ping will be adjusted
@@ -301,7 +283,7 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
    * Constructor of the [SynchronizedGameRoom] class
    */
   
-  SynchronizedGameRoom._(G game, ProtocolPeerRoom room) : super._(game, room) {
+  _SynchronizedGameRoom(G game, ProtocolPeerRoom room) : super(game, room) {
     // Loop through existing players in the channel
     remotePlayers.forEach(_onPlayerJoined);
     onPlayerJoin.listen((R remotePlayer) {
@@ -332,6 +314,9 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
       _isSynchronized = false;
       _onSynchronizationStateChangedController.add(isSynchronized);
     }
+    
+    print('[$this]: remotePlayers: ${remotePlayer} / ${players}');
+    print('[$this] RemotePlayer: $remotePlayer');
     
     remotePlayer.getSynchronizationChannel().then((JsonProtocol protocol) {
       _pingablePlayers[remotePlayer] = protocol;
@@ -427,7 +412,7 @@ class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends Synchronized
     // Send message to all remote players
     room.sendToProtocol('game', sm);
     // Queue message in local player
-    (localPlayer as SynchronizedPlayer)._synchronizeMessage(sm);
+    (localPlayer as DefaultSynchronizedPlayer)._synchronizeMessage(sm);
   }
   
   /**

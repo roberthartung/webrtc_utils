@@ -1,7 +1,5 @@
 /**
  * A set of protocols supported by the data channel
- * 
- * TODO(rh): How can the users add their own protocols 
  */
 
 part of webrtc_utils.client;
@@ -75,7 +73,7 @@ class StringProtocol extends RawProtocol<String> {
  */
 
 abstract class ProtocolProvider {
-  DataChannelProtocol provide(Peer peer, RtcDataChannel channel);
+  DataChannelProtocol provide(_Peer peer, RtcDataChannel channel);
 }
 
 /**
@@ -83,7 +81,7 @@ abstract class ProtocolProvider {
  */
 
 class DefaultProtocolProvider implements ProtocolProvider {
-  DataChannelProtocol provide(Peer peer, RtcDataChannel channel) {
+  DataChannelProtocol provide(_Peer peer, RtcDataChannel channel) {
     if(channel.protocol == 'json') {
       return new JsonProtocol(channel);
     }

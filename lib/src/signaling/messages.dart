@@ -3,7 +3,6 @@ part of webrtc_utils.signaling;
 abstract class SignalingMessage {
   String get type;
   
-  // TODO(rh): Should we name it source?
   final int _peerId;
   
   int get peerId => _peerId;

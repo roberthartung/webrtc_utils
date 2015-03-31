@@ -6,33 +6,125 @@
 
 part of webrtc_utils.client;
 
-class Peer<C extends P2PClient> {
-  // The id of this peer. This ID is assigned by the signaling server
-  final int id;
+/**
+ * Peer interface class
+ */
+
+abstract class Peer<C extends P2PClient> {
+  /**
+   * An integer representing the global id of this peer according to the
+   * [SignalingServer]. This id must be unique for each SignalingServer connection
+   * but might be re-used for multiple rooms.
+   */
   
-  // The room this peer belongs to
-  final PeerRoom room;
-  
-  // The RtcPeerConnection
-  final RtcPeerConnection _pc;
-  
-  // The P2PClient of this peer
-  final C client;
-  
-  // EventStream when the remote peer adds a stream
-  Stream<MediaStreamEvent> get onAddStream => _pc.onAddStream;
-  
-  // EventStream when the remote peer removes a stream
-  Stream<MediaStreamEvent> get onRemoveStream => _pc.onRemoveStream;
-  
-  // Notifies when a new data channel was created locally or remotely
-  Stream<RtcDataChannel> get onChannel => _onChannelController.stream;
-  StreamController<RtcDataChannel> _onChannelController = new StreamController.broadcast();
+  int get id;
   
   /**
-   * Map of [RtcDataChannel] labels to their channels
-   * TODO(rh): Do we actually need a map to save protocols?
+   * The room this Peer belongs to.
    */
+  
+  PeerRoom get room;
+  
+  /**
+   * A reference to the [P2PClient]
+   */
+  
+  C get client;
+  
+  /**
+   * Map of [RtcDataChannel.label] to the channel
+   */
+  
+  Map<String, RtcDataChannel> get channels;
+  
+  /**
+   * Can be listened to, to get notified when a stream gets added
+   */
+  
+  Stream<MediaStreamEvent> get onAddStream;
+  
+  /**
+   * Can be listened to, to get notified when a stream gets removed
+   */
+  
+  Stream<MediaStreamEvent> get onRemoveStream;
+  
+  /**
+   * Can be listened to, to get informed when a new [RtcDataChannel] was created.
+   * 
+   * Note: You have to wait for the [RtcDataChannel.onOpen] event to be able
+   * to send messages. 
+   */
+  
+  Stream<RtcDataChannel> get onChannel;
+  
+  /**
+   * Signals to create a new [RtcDataChannel] with this peer.
+   */
+  
+  void createChannel(String label, [Map options = null]);
+  
+  /**
+   * Adds a stream to this peer
+   * 
+   * The [ms] can be loaded using [window.navigator.getUserMedia].
+   * 
+   * The [mediaConstraints] map specifies mandatory/optional constraints for
+   * the stream.
+   * 
+   * TODO(rh): Example configuration
+   */
+  
+  void addStream(MediaStream ms, [Map<String,String> mediaConstraints]);
+  
+  /**
+   * Removes a stream from this peer
+   */
+  
+  void removeStream(MediaStream ms);
+}
+
+/**
+ * An interface for a protocol peer that extends the regular peer 
+ */
+
+abstract class ProtocolPeer<C extends P2PClient> extends Peer<C> {
+  /**
+   * Map of [RtcDataChannel.label] to a [DataChannelProtocol]
+   */
+
+  Map<String, DataChannelProtocol> get protocols;
+  
+  /**
+   * Stream that can be listened to, to get notified when a new protocol is ready
+   * to be used. This means that this stream will fire events after the
+   * [RtcDataChannel.onOpen] event was fired and the underlying [RtcDataChanenl]
+   * is ready to use
+   */
+  
+  Stream<DataChannelProtocol> get onProtocol;
+}
+
+/**
+ * A peer represents a machine/browser in the system. This is the internal
+ * implementation of the [Peer] interface.
+ */
+
+class _Peer<C extends _P2PClient> implements Peer<C> {
+  final int id;
+  
+  final _PeerRoom room;
+  
+  final RtcPeerConnection _pc;
+  
+  final C client;
+  
+  Stream<MediaStreamEvent> get onAddStream => _pc.onAddStream;
+  
+  Stream<MediaStreamEvent> get onRemoveStream => _pc.onRemoveStream;
+  
+  Stream<RtcDataChannel> get onChannel => _onChannelController.stream;
+  StreamController<RtcDataChannel> _onChannelController = new StreamController.broadcast();
   
   final Map<String, RtcDataChannel> channels = {};
   
@@ -42,7 +134,7 @@ class Peer<C extends P2PClient> {
    * Internal constructor that is called from the [P2PClient]
    */
   
-  Peer._(this.room, this.id, this.client, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}])
+  _Peer(this.room, this.id, this.client, [Map mediaConstraints = const {'optional': const [const {'DtlsSrtpKeyAgreement': true}]}])
     : _pc = new RtcPeerConnection(rtcConfiguration, mediaConstraints) {
     _pc.onNegotiationNeeded.listen((Event ev) { 
       print('[$this] Connection.negotiationNeeded');
@@ -85,10 +177,6 @@ class Peer<C extends P2PClient> {
     _onChannelController.add(channel);
   }
   
-  /**
-   * Create a new RtcDataChannel with a given label
-   */
-  
   void createChannel(String label, [Map options = null]) {
     // id is an unsigned unsigned short
     /*
@@ -99,45 +187,26 @@ class Peer<C extends P2PClient> {
     _notifyChannelCreated(_pc.createDataChannel(label, options));
   }
   
-  /**
-   * Adds a stream to this Peer (e.g. Webcam)
-   * 
-   * TODO(rh): Spec of mediaConstraints?
-   */
-  
   void addStream(MediaStream ms, [Map<String,String> mediaConstraints]) {
     _pc.addStream(ms);
   }
-  
-  /**
-   * Removes a stream from this Peer
-   */
   
   void removeStream(MediaStream ms) {
     _pc.removeStream(ms);
   }
   
-  /**
-   * Returns a string representation for this Peer
-   */
-  
   String toString() => 'Peer#$id';
 }
 
 /**
- * The [ProtocolPeer] extends [Peer] that by adding a [DataChannelProtocol] on top to the [RtcDataChannel].
+ * The [_ProtocolPeer] extends [_Peer] that by adding a [DataChannelProtocol] on top to the [RtcDataChannel].
  * It uses the [RtcDataChannel.protocol] property and a [ProtocolProvider] to provide application
  * specific protocols.
  */
 
-class ProtocolPeer extends Peer<ProtocolP2PClient> {
+class _ProtocolPeer extends _Peer<_ProtocolP2PClient> implements ProtocolPeer<_ProtocolP2PClient> {
   Stream<DataChannelProtocol> get onProtocol => _onProtocolController.stream;
   StreamController<DataChannelProtocol> _onProtocolController = new StreamController.broadcast();
-  
-  /**
-   * Map of [RtcDataChannel] labels to their protocols
-   * TODO(rh): Do we actually need a map to save protocols?
-   */
   
   final Map<String, DataChannelProtocol> protocols = {};
   
@@ -145,7 +214,7 @@ class ProtocolPeer extends Peer<ProtocolP2PClient> {
    * Library-internal constructor
    */
   
-  ProtocolPeer._(room, id, client) : super._(room, id, client);
+  _ProtocolPeer(room, id, client) : super(room, id, client);
   
   @override
   void _notifyChannelCreated(RtcDataChannel channel) {
