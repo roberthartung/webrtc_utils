@@ -1,4 +1,4 @@
-/// This library contains stuff 
+/// This library contains stuff
 library webrtc_utils.signaling;
 
 // Rtc* classes
