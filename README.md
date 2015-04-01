@@ -1,32 +1,34 @@
 # webrtc_utils
 
-The *webrtc_utils* package will help you to use WebRTC (See: [Official Website](http://www.webrtc.org/), [W3C](http://www.w3.org/TR/webrtc/)) in your Dart applications. It offers different wrappers and extension points to help you with your application and to make your life easier. The purpose of this package is to hide necessary details from the user's application, but also give you the the ability and freedom to use your own extensions.
+The *webrtc_utils* package will help you to use WebRTC (See: [Official Website](http://www.webrtc.org/), [W3C](http://www.w3.org/TR/webrtc/)) in your [Dart](http://www.dartlang.org) applications. It offers various extension points and basic implentations to help you with your application and to make your life easier. The purpose of this package is to hide necessary details from the user's application, but also give you the the ability and freedom to use your own extensions where necessary.
+
+There are three important libraries in the package: *game*, *client* and *server*. For an explanation of these see below.
 
 ## Architecture Overview
 
+The architecture of the *webrtc_utils* is shown below. You can see the different classes that the package provides. Note that the architecture does not include the *server* library.
+
 ![](https://github.com/roberthartung/webrtc_utils/raw/master/doc/architecture.png)
-
-## Classes
-
-![](https://github.com/roberthartung/webrtc_utils/raw/master/doc/classes.png)
 
 # What is WebRTC
 
 WebRTC is a concept supported by Chrome, Opera and Firefox to enable **Web** based **R**eal **T**ime **C**ommunication. WebRTC will establish a Peer-to-Peer (P2P) connection (*RtcPeerConnection*) between two browsers. This connection can be used to exchange data. The following types of data exchange are supported:
 
-1. **Streams** (like video or audio captured from a webcam or the desktop, later requires your app to be a (chrome) extensions) 
+1. **Streams** (like video or audio captured from a webcam or the desktop, later requires your app to be an extensions/addon (at least in chrome)) 
 2. **List of bytes** (any type of messages using *RtcDataChannel*, like strings (chat messages) or other information that can be represented as a series of bytes)
+
+For more information please refer to the official websites and sources.
 
 ### Concept & Architecture
 
-WebRTC needs a server to exchance initial connection information. There information are called *signaling* messages. The server that handles these messages is called the *signaling* server. A WebRTC connection is always established between two peers (computers, browsers). WebRTC uses the [ICE protocol](en.wikipedia.org/wiki/Interactive_Connectivity_Establishment) to find your public IP address. These implementation details are hidden from the user. The only exception is that you have to provide a *RtcConfiguration*, usually this is a map listing [TURN](http://en.wikipedia.org/wiki/Traversal_Using_Relays_around_NAT) servers. Note that there are a lot of public servers that you can use.
+WebRTC needs a server to exchance initial connection information. There information are called *signaling* messages. The server that handles these messages is called the *signaling server*. A WebRTC connection is always established between two peers (computers, browsers). Thus they need to exchange their public IP Addresses. WebRTC uses the [ICE protocol](en.wikipedia.org/wiki/Interactive_Connectivity_Establishment) to find these. These implementation details are hidden from the user. The only exception is that you have to provide a *RtcConfiguration*, usually this is a map listing [TURN](http://en.wikipedia.org/wiki/Traversal_Using_Relays_around_NAT) servers. Note that there are a lot of public servers that you can use and the *client* library already has such a list you can use.
 
 ## Purpose of webrtc_utils
 
 The webrtc_utils package will help you with ...
 
-- **Establishing P2P connections**: Using an abstract implementation of *Peer*, *Room* and *P2PClient*
-- **Using protocols for byte based data channels**: *webrtc_utils* uses the concept of a protocol that is implemented on top of a *RtcDataChannel*. The protocol wraps messages into a transferrable format.
+- **Establishing basic P2P connections**: Using [*Peer*](http://www.dartdocs.org/documentation/webrtc_utils/latest/index.html#webrtc_utils/webrtc_utils-client.Peer), *PeerRoom* and *P2PClient*
+- **Using protocols for byte based data channels**: *webrtc_utils* uses the concept of a protocol that is implemented on top of a *RtcDataChannel*. The protocol wraps messages into a transferrable format. You should use *ProtocolPeer*, *ProtocolPeerRoom* and *ProtocolP2PClient* for these.
 - **Setting up a SignalingServer**: *webrtc_utils* comes with an example implementation of a WebSocket based SignalingServer that provides both the server and client side.
 
 ## Concepts
