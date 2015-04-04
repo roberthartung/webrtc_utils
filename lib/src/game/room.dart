@@ -11,6 +11,8 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
 
   L get localPlayer;
 
+  GameRoomRenderer get renderer;
+
   ProtocolPeerRoom get room;
 
   List<P> get players;
@@ -22,11 +24,17 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
   Stream<R> get onPlayerLeave;
 
   Stream<P> get onGameOwnerChanged;
+
+  void startAnimation();
+
+  void stopAnimation();
 }
 
 abstract class SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer, P extends Player>
     extends GameRoom<G, L, R, P> {
   double get globalTime;
+
+  int get globalTick;
 
   num get maxPing;
 
@@ -42,6 +50,13 @@ abstract class SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Sy
 /// A room that holds [Player]s instead of [_Peer]
 class _GameRoom<G extends _P2PGame, L extends LocalPlayer, R extends RemotePlayer, P extends Player>
     implements GameRoom<G, L, R, P> {
+  /// Indicator if we're still in the animation loop
+  var _animationLoop = true;
+
+  GameRoomRenderer _gameRoomRenderer;
+
+  GameRoomRenderer get renderer => _gameRoomRenderer;
+
   final G game;
 
   /// Set if the LocalPlayer is the owner of the game (room)
@@ -59,7 +74,8 @@ class _GameRoom<G extends _P2PGame, L extends LocalPlayer, R extends RemotePlaye
   /// TODO(rh): Can we omit the 'as Iterable<R>' somehow?
   /// TODO(rh): When the generic type is omitted it will be dynamic so this check will fail
   Iterable<R> get remotePlayers =>
-      players.where((P p) => (p is R) /*!p.isLocal*/) as Iterable<R>;
+      // (p is R)
+      players.where((P p) => !p.isLocal) as Iterable<R>;
 
   /// The local player instance
   L get localPlayer => _localPlayer;
@@ -85,7 +101,8 @@ class _GameRoom<G extends _P2PGame, L extends LocalPlayer, R extends RemotePlaye
   ProtocolPeerRoom get room => _room;
   final ProtocolPeerRoom _room;
 
-  _GameRoom(this.game, this._room) {
+  _GameRoom(this.game, this._room, GameRoomRendererFactory factory) {
+    _gameRoomRenderer = factory.createRenderer(this);
     _localPlayer = game.playerFactory.createLocalPlayer(this, game.id);
     _playerJoined(_localPlayer);
     _room.peers.forEach((Peer peer) {
@@ -145,6 +162,27 @@ class _GameRoom<G extends _P2PGame, L extends LocalPlayer, R extends RemotePlaye
       _getGameOwner();
     }
   }
+
+  /// Start animation in all rooms
+  void startAnimation() {
+    _animationLoop = true;
+    window.animationFrame.then(_animationFrame);
+  }
+
+  /// Stop animation in all rooms
+  void stopAnimation() {
+    _animationLoop = false;
+  }
+
+  /// This is the callback for the [window.animationFrame]. The only argument is a
+  /// high precision timestamp that we have to synchronize for each [SynchronizedGameRoom]
+  /// seperately!
+  void _animationFrame(num localTime) {
+    _gameRoomRenderer.render();
+    if (_animationLoop) {
+      window.animationFrame.then(_animationFrame);
+    }
+  }
 }
 
 /// Synchronized version of a game room. The gameroom will send a 'ping' message to all
@@ -164,8 +202,8 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
       ? window.performance.now()
       : window.performance.now() + timeDifferenceToMaster;
 
-  // int get globalTick => globalTime ~/ (1000.0 / game.targetTickRate);
-  // int toGlobalTick(int delay) => ((globalTime + maxPing) ~/ (1000.0 / game.targetTickRate)) + delay;
+  /// Getter that returns the current global tick
+  int get globalTick => globalTime ~/ (1000.0 / _gameRoomRenderer.targetTickRate);
 
   /// Internal variable for holding the maximum ping. The maximum ping will be adjusted
   /// every second by taking 50% of the old maximum ping and 50% of the new maximum ping,
@@ -201,7 +239,7 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
   bool _isSynchronized = true;
 
   /// Constructor of the [SynchronizedGameRoom] class
-  _SynchronizedGameRoom(G game, ProtocolPeerRoom room) : super(game, room) {
+  _SynchronizedGameRoom(G game, ProtocolPeerRoom room, GameRoomRendererFactory gameRoomRendererFactory) : super(game, room, gameRoomRendererFactory) {
     // Loop through existing players in the channel
     remotePlayers.forEach(_onPlayerJoined);
     onPlayerJoin.listen((R remotePlayer) {
@@ -224,6 +262,7 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
   ///
   /// Changes synchronization state to false if needed
   void _onPlayerJoined(R remotePlayer) {
+    print('Player joined: $remotePlayer');
     // Whenever a new remote player joins make sure
     if (isSynchronized) {
       _isSynchronized = false;
@@ -310,7 +349,7 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
     }
 
     double targetTime = (globalTime + 2 * maxPing);
-    int targetTick = targetTime ~/ (1000.0 / game.targetTickRate) + tickDelay;
+    int targetTick = targetTime ~/ (1000.0 / _gameRoomRenderer.targetTickRate) + tickDelay;
 
     SynchronizedGameMessage sm =
         new SynchronizedGameMessage(targetTick, message);
@@ -327,7 +366,7 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
     // convert local to global time
     double globalTime = localTime + timeDifferenceToMaster;
     // get last tick
-    int lastTick = globalTime ~/ (1000 / game.targetTickRate);
+    int lastTick = globalTime ~/ (1000 / _gameRoomRenderer.targetTickRate);
     // generate ticks
 
     for (int t = _lastDeliveredTick + 1; t <= lastTick; t++) {
@@ -349,5 +388,10 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
     }
 
     _lastDeliveredTick = lastTick;
+  }
+
+  void _animationFrame(num localTime) {
+    _synchronize(localTime);
+    super._animationFrame(localTime);
   }
 }

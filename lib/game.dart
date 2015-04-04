@@ -55,3 +55,4 @@ part 'src/game/game.dart';
 part 'src/game/room.dart';
 part 'src/game/player.dart';
 part 'src/game/protocol.dart';
+part 'src/game/mixin.dart';

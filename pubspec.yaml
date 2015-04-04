@@ -1,15 +1,13 @@
 name: webrtc_utils
-version: 0.2.0-alpha-1
+version: 0.2.1
 author: Robert Hartung <robert.w.hartung@gmail.com>
 description: Provides a set of classes and concepts for clients or servers that can be used to build applications or games utilizing WebRTC.
 homepage: https://github.com/roberthartung/webrtc_utils/
 environment:
-  sdk: <=1.9.0
-documentation: http://www.dartdocs.org/documentation/webrtc_utils/0.1.0/
+  sdk: <=1.10.0
 dependencies:
   browser: '>=0.10.0+2 <0.11.0'
   chrome: '>=0.6.5 <0.7.0'
-  stack_trace: any
 transformers:
 - chrome
 - $dart2js:

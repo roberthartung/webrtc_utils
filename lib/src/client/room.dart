@@ -32,8 +32,7 @@ abstract class PeerRoom<P extends Peer, C extends P2PClient> {
 /// An interface that supports sending messages via a protocol to a [ProtocolPeer]
 /// Use [ProtocolP2PClient.setProtocolProvider] to set the instance of your
 /// [ProtocolProvider].
-abstract class ProtocolPeerRoom<P extends Peer, C extends ProtocolP2PClient>
-    extends PeerRoom<P, C> {
+abstract class ProtocolPeerRoom<P extends ProtocolPeer, C extends ProtocolP2PClient> extends PeerRoom<P, C> {
   /// Call this method when you want to send a message to all peers that have
   /// a [DataChannelProtocol] with an [RtcDataChannel.label] of [channelLabel].
   ///
@@ -49,19 +48,19 @@ class _PeerRoom<P extends _Peer, C extends _P2PClient>
     implements PeerRoom<P, C> {
   final String name;
 
-  final _P2PClient client;
+  final C client;
 
   /// Internal Map of peers
-  final Map<int, _Peer> _peers = {};
+  final Map<int, P> _peers = {};
 
-  Iterable<_Peer> get peers => _peers.values;
+  Iterable<P> get peers => _peers.values;
 
-  Stream<_Peer> get onPeerJoin => _onPeerJoinController.stream;
-  StreamController<_Peer> _onPeerJoinController =
+  Stream<P> get onPeerJoin => _onPeerJoinController.stream;
+  StreamController<P> _onPeerJoinController =
       new StreamController.broadcast();
 
-  Stream<_Peer> get onPeerLeave => _onPeerLeaveController.stream;
-  StreamController<_Peer> _onPeerLeaveController =
+  Stream<P> get onPeerLeave => _onPeerLeaveController.stream;
+  StreamController<P> _onPeerLeaveController =
       new StreamController.broadcast();
 
   _PeerRoom(this.client, this.name);

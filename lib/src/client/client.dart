@@ -17,8 +17,7 @@ abstract class P2PClient<R extends PeerRoom> {
 }
 
 /// Interface for
-abstract class ProtocolP2PClient<R extends ProtocolPeerRoom>
-    extends P2PClient<R> {
+abstract class ProtocolP2PClient<R extends ProtocolPeerRoom> extends P2PClient<R> {
   void setProtocolProvider(ProtocolProvider provider);
 }
 
@@ -48,13 +47,13 @@ abstract class _P2PClient<R extends _PeerRoom, P extends _Peer>
       new StreamController.broadcast();
 
   /// Event stream when you join a room
-  Stream<_PeerRoom> get onJoinRoom => _onJoinRoomController.stream;
-  final StreamController<_PeerRoom> _onJoinRoomController =
+  Stream<R> get onJoinRoom => _onJoinRoomController.stream;
+  final StreamController<R> _onJoinRoomController =
       new StreamController.broadcast();
 
   /// Event stream when you leave a room
-  Stream<_PeerRoom> get onLeaveRoom => _onLeaveRoomController.stream;
-  final StreamController<_PeerRoom> _onLeaveRoomController =
+  Stream<R> get onLeaveRoom => _onLeaveRoomController.stream;
+  final StreamController<R> _onLeaveRoomController =
       new StreamController.broadcast();
 
   /// Constructor

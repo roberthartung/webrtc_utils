@@ -1,7 +1,7 @@
 part of webrtc_utils.game;
 
 /// Interface for the P2PGame class
-abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends GameRoom> {
+abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends GameRoom> /*extends ProtocolP2PClient*/ {
   /// List of game rooms of type [G]
   List<G> get gameRooms;
 
@@ -11,27 +11,15 @@ abstract class P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends 
   /// Sets the [PlayerFactory] that will be called if we need to create a new
   /// [Player] object.
   void setPlayerFactory(PlayerFactory factory);
+
+  /// Sets the [GameRoomRendererFactory] for this game. It is used to create a
+  /// room specific [GameRoomRenderer]
+  void setGameRoomRendererFactory(GameRoomRendererFactory<G> gameRoomRenderer);
 }
 
 /// Interface for the P2PGame class
 abstract class SynchronizedP2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends SynchronizedGameRoom>
     extends P2PGame<L, R, G> {
-  int get targetTickRate;
-
-  /// TODO(rh): Move to [GameRoom]
-  void startAnimation();
-
-  /// TODO(rh): Move to [GameRoom]
-  void stopAnimation();
-
-  /// Method to be implemeneted by the actual application that is called the browser's
-  /// frame rate for [window.animationFrame]. Ticks and messages will be delivered before.
-  ///
-  /// Ticks will be delivered by the .tick method of the [SynchronizedPlayer]s. Messages will be
-  /// delivered by a sync stream.
-  ///
-  /// TODO(rh): Move to [GameRoom]
-  void render();
 }
 
 ///
@@ -46,6 +34,18 @@ abstract class PlayerFactory<L extends LocalPlayer, R extends RemotePlayer> {
   R createRemotePlayer(GameRoom room, ProtocolPeer peer);
 }
 
+///
+abstract class GameRoomRenderer<R extends GameRoom> {
+  int get targetTickRate;
+
+  void render();
+}
+
+///
+abstract class GameRoomRendererFactory<R extends GameRoom> {
+  GameRoomRenderer<R> createRenderer(R gameRoom);
+}
+
 /// An abstract, basic implementation of a peer2peer game
 ///
 /// It handles the following functions:
@@ -57,6 +57,8 @@ abstract class _P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends
     extends WebSocketProtocolP2PClient implements P2PGame<L, R, G> {
   /// List of gamerooms the client joined
   final List<G> gameRooms = [];
+
+  GameRoomRendererFactory<G> _gameRoomRendererFactory;
 
   /// Stream of GameRooms [G] that have been created for every room
   Stream<G> get onGameRoomCreated => _onGameRoomCreatedController.stream;
@@ -70,7 +72,7 @@ abstract class _P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends
   /// Constructor, creates a new WebSocketP2PClient with the given WebSocket URL and rtcConfiguration
   _P2PGame(String webSocketUrl, Map rtcConfiguration)
       : super(webSocketUrl, rtcConfiguration) {
-    onJoinRoom.listen((PeerRoom room) {
+    onJoinRoom.listen((ProtocolPeerRoom room) {
       // Instantiate game room wrapper, add to list and fire event
       G gameRoom = _createGameRoom(room);
       gameRooms.add(gameRoom);
@@ -85,12 +87,17 @@ abstract class _P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends
   }
 
   /// Creates a game room
-  GameRoom _createGameRoom(PeerRoom room) {
-    return new _GameRoom<_P2PGame, L, R, Player>(this, room);
+  GameRoom _createGameRoom(ProtocolPeerRoom room) {
+    _GameRoom gameRoom = new _GameRoom<_P2PGame, L, R, Player>(this, room, _gameRoomRendererFactory);
+    return gameRoom;
   }
 
   void setPlayerFactory(PlayerFactory f) {
     this.playerFactory = f;
+  }
+
+  void setGameRoomRendererFactory(GameRoomRendererFactory<G> gameRoomRendererFactory) {
+    this._gameRoomRendererFactory = gameRoomRendererFactory;
   }
 }
 
@@ -98,72 +105,29 @@ abstract class _P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends
 abstract class _SynchronizedP2PGame<L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer>
     extends _P2PGame<L, R, _SynchronizedGameRoom>
     implements SynchronizedP2PGame<L, R, _SynchronizedGameRoom> {
-
-  /**
-  /// An integer representing the target tick rate (FPS) for the game.
-  /// 
-  /// [window.animationFrame] might not generate accurate 60 fps, thus we can
-  /// only rely on the time passed to the callback.
-   */
-
-  final int targetTickRate;
-
-  /// Indicator if we're still in the animation loop
-  /// TODO(rh): Move this to [GameRoom]
-  var _animationLoop = true;
-
   /// Constructor that passes the url and rtcConfiguration to the [P2PGame],
   /// it takes an optionally, named parameter [targetTickRate] that defines
   /// the target tick rate of all rooms of this game.
   _SynchronizedP2PGame(
-      String webSocketUrl, Map rtcConfiguration, this.targetTickRate)
+      String webSocketUrl, Map rtcConfiguration)
       : super(webSocketUrl, rtcConfiguration);
-
-  /// Start animation in all rooms
-  /// TODO(rh): Move to [GameRoom]
-  void startAnimation() {
-    _animationLoop = true;
-    window.animationFrame.then(_animationFrame);
-  }
-
-  /// Stop animation in all rooms
-  /// TODO(rh): Move to [GameRoom]
-  void stopAnimation() {
-    _animationLoop = false;
-  }
-
-  /// This is the callback for the [window.animationFrame]. The only argument is a
-  /// high precision timestamp that we have to synchronize for each [SynchronizedGameRoom]
-  /// seperately!
-  ///
-  /// TODO(rh): Move to [GameRoom]
-  void _animationFrame(num localTime) {
-    // This time is local, but the same for all rooms
-    // synchronize each room and render game afterwards
-    gameRooms.forEach((_SynchronizedGameRoom room) {
-      room._synchronize(localTime);
-    });
-
-    // TODO(rh): Move to [GameRoom]
-    render();
-
-    if (_animationLoop) {
-      window.animationFrame.then(_animationFrame);
-    }
-  }
 
   /// Overrides method from [P2PGame] and creates a synchronized room instead.
   @override
-  SynchronizedGameRoom _createGameRoom(PeerRoom room) {
-    return new _SynchronizedGameRoom<_SynchronizedP2PGame, L, R>(this, room);
+  SynchronizedGameRoom _createGameRoom(ProtocolPeerRoom room) {
+    _SynchronizedGameRoom gameRoom = new _SynchronizedGameRoom<_SynchronizedP2PGame, L, R>(this, room, _gameRoomRendererFactory);
+    return gameRoom;
   }
 }
 
-///
-/// TODO(rh): Don't make this class abstract and add the [RoomRenderer] interface
-abstract class SynchronizedWebSocketP2PGame<L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer>
-    extends _SynchronizedP2PGame<L, R> {
-  SynchronizedWebSocketP2PGame(String webSocketUrl, Map rtcConfiguration,
-      {int targetTickRate: 60})
-      : super(webSocketUrl, rtcConfiguration, targetTickRate);
+class WebSocketP2PGame<L extends LocalPlayer, R extends RemotePlayer>
+  extends _P2PGame<L, R, _GameRoom> {
+    WebSocketP2PGame(String webSocketUrl, Map rtcConfiguration)
+    : super(webSocketUrl, rtcConfiguration);
+}
+
+class SynchronizedWebSocketP2PGame<L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer>
+    extends _SynchronizedP2PGame<L, R> implements SynchronizedP2PGame<L,R, _SynchronizedGameRoom> {
+  SynchronizedWebSocketP2PGame(String webSocketUrl, Map rtcConfiguration)
+      : super(webSocketUrl, rtcConfiguration);
 }

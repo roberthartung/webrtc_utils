@@ -1,37 +1,35 @@
 /**
  * An example on how to create a synchronized game. The game consists of a [CanvasElement]
- * that each user can click on. 
+ * that each user can click on.
  */
 
-import 'package:stack_trace/stack_trace.dart';
 import 'package:webrtc_utils/client.dart';
 import 'package:webrtc_utils/game.dart';
 import 'dart:html';
 import 'dart:math';
 import 'dart:async';
-import 'dart:convert';
 
 final String webSocketUrl = 'ws://${window.location.hostname}:28080';
 
 /**
- * Demo Shape that will exchanged / changed synchronously 
+ * Demo Shape that will exchanged / changed synchronously
  */
 
 class Circle {
   final Point middle;
-  
+
   Circle(this.middle);
-  
+
   int _opacity = 100;
-  
+
   int _radius = 0;
-  
+
   bool tick() {
     _opacity -= 4;
     _radius += 1;
     return _opacity <= 0;
   }
-  
+
   void render(CanvasRenderingContext2D ctx) {
     ctx.save();
     ctx.fillStyle = 'red';
@@ -49,19 +47,19 @@ class Circle {
 
 abstract class DemoPlayer {
   SynchronizedGameRoom get room;
-  
+
   List<Circle> circles = [];
-  
+
   /**
    * Handle a synchronized message
    */
-  
+
   void handleMessage(GameMessage message) {
     if(message is ClickMessage) {
       circles.add(new Circle(message.point));
     }
   }
-  
+
   void render(CanvasRenderingContext2D ctx) {
     circles.forEach((Circle c) => c.render(ctx));
   }
@@ -78,19 +76,15 @@ class ClickMessage implements GameMessage {
 
 class MyLocalPlayer extends DefaultSynchronizedLocalPlayer with DemoPlayer {
   CanvasElement _canvas;
-  
+
   MyLocalPlayer(SynchronizedGameRoom gameRoom, int id) : super(gameRoom, id) {
-    //_setupListener();
-    _canvas = querySelector('#canvas');
+    _canvas = querySelector('div[data-room-name="${gameRoom.room.name}"] .canvas');
     _canvas.onClick.listen((MouseEvent ev) {
       gameRoom.synchronizeMessage(new ClickMessage(ev.offset));
     });
   }
-  
-  /**
-   * Method called by the room, will make a tick on each circle/object in the game
-   */
-  
+
+  /// Method called by the room, will make a tick on each circle/object in the game
   void tick(int tick) {
     super.tick(tick);
     List<Circle> finishedCircles = [];
@@ -103,17 +97,11 @@ class MyLocalPlayer extends DefaultSynchronizedLocalPlayer with DemoPlayer {
   }
 }
 
-/**
- * An example of a remote player
- */
-
+/// An example of a remote player
 class MyRemotePlayer extends DefaultSynchronizedRemotePlayer with DemoPlayer {
   MyRemotePlayer(SynchronizedGameRoom room, Peer peer) : super(room, peer);
-  
-  /**
-   * Method called by the room, will make a tick on each circle/object in the game
-   */
-  
+
+  /// Method called by the room, will make a tick on each circle/object in the game
   void tick(int tick) {
     super.tick(tick);
     List<Circle> finishedCircles = [];
@@ -126,30 +114,28 @@ class MyRemotePlayer extends DefaultSynchronizedRemotePlayer with DemoPlayer {
   }
 }
 
-/**
- * Handles serialization of messages from [SynchronizedGameMessage] to [Map]
- */
-
+/// Handles serialization of messages from [SynchronizedGameMessage] to [Map]
 class GameProtocol extends JsonProtocol {
   GameProtocol(RtcDataChannel channel) : super(channel);
-  
+
   @override
   SynchronizedGameMessage handleMessage(String data) {
     Object o = super.handleMessage(data);
-    GameMessage gm;
+    GameMessage gm = null;
     if(o is Map) {
       if(o.containsKey('click')) {
         gm = new ClickMessage(new Point(o['click']['x'], o['click']['y']));
       } else {
         throw "Unknown message: $o";
       }
-      
+
+      // TODO(rh): Can we do this better? E.g. using a factory?
       return new SynchronizedGameMessage(o['tick'], gm);
     }
-    
+
     throw "Unknown message: $o";
   }
-  
+
   @override
   void send(SynchronizedGameMessage sm) {
     Map map = {'tick': sm.tick};
@@ -172,7 +158,7 @@ class MyProtocolProvider extends DefaultProtocolProvider {
     if(channel.protocol == 'game') {
       return new GameProtocol(channel);
     }
-    
+
     return super.provide(peer, channel);
   }
 }
@@ -182,58 +168,67 @@ class MyPlayerFactory implements PlayerFactory<MyLocalPlayer, MyRemotePlayer> {
   MyLocalPlayer createLocalPlayer(GameRoom room, int localId) {
     return new MyLocalPlayer(room, localId);
   }
-  
+
   @override
   MyRemotePlayer createRemotePlayer(GameRoom room, Peer peer) {
     return new MyRemotePlayer(room, peer);
   }
 }
 
-/**
- * A synchronized game example. Overrides only the createGameRoom method so
- * you can create a game specific room
- */
+class MyGameRoomRendererFactory<G extends SynchronizedGameRoom> implements GameRoomRendererFactory<G> {
+  GameRoomRenderer<G> createRenderer(G room) {
+    return new MyGameRoomRenderer(room);
+  }
+}
 
-class MyGame extends SynchronizedWebSocketP2PGame<MyLocalPlayer, MyRemotePlayer> {
+class MyGameRoomRenderer<G extends SynchronizedGameRoom> implements GameRoomRenderer<G> {
+  /// An integer representing the target tick rate (FPS) for the game.
+  ///
+  /// [window.animationFrame] might not generate accurate 60 fps, thus we can
+  /// only rely on the time passed to the callback.
+  final int targetTickRate = 60;
+
   CanvasElement _canvas;
-  
+
   CanvasRenderingContext2D _ctx;
-  
+
   int _fpsCounter = 0;
-  
-  MyGame(String webSocketUrl, Map rtcConfiguration)
-    : super(webSocketUrl, rtcConfiguration) {
-    setProtocolProvider(new MyProtocolProvider());
-    setPlayerFactory(new MyPlayerFactory());
-    
-    _canvas = querySelector('#canvas');
+
+  final G gameRoom;
+
+  MyGameRoomRenderer(this.gameRoom) {
+    document.body.appendHtml('''<div class="room" data-room-name="${gameRoom.room.name}">
+  <div>fps: <span class="fps"></span></div>
+  <canvas class="canvas" width="400" height="300"></canvas>
+<div>max ping: <span class="maxping"></span> [ms]</div>
+<div>diff to master: <span class="maxdifference"></span> [ms]</div>
+<div>global: <span class="globaltime"></span> [ms]</div>
+</div>''');
+
+    DivElement div = querySelector('div[data-room-name="${gameRoom.room.name}"]');
+    SpanElement fpsElement = div.querySelector('.fps');
+    SpanElement pingElement = div.querySelector('.maxping');
+    SpanElement diffElement = div.querySelector('.maxdifference');
+    SpanElement timeElement = div.querySelector('.globaltime');
+
+    _canvas = div.querySelector('.canvas');
     _ctx = _canvas.getContext('2d');
-    startAnimation();
     new Timer.periodic(new Duration(seconds: 1), (Timer t) {
-      querySelector('#fps').text = '$_fpsCounter';
-      //querySelector('#maxping').text = '$_maxPing';
-      //querySelector('#maxdifference').text = '$_maxPositiveTimeDifference';
+      fpsElement.text = '$_fpsCounter';
+      pingElement.text = '${gameRoom.maxPing}';
+      diffElement.text = '${gameRoom.timeDifferenceToMaster}';
+      timeElement.text = '${gameRoom.globalTime}';
       _fpsCounter = 0;
     });
-    
-    onGameRoomCreated.listen((SynchronizedGameRoom gameRoom) {
-      print('[$this] GameRoom created: $gameRoom');
-      gameRoom.onSynchronizationStateChanged.listen((bool state) {
-        print('Synchronization state changed: $state');
-      });
-    });
+
+    gameRoom.startAnimation();
   }
-  
-  @override
+
   void render() {
     _fpsCounter++;
     _ctx.clearRect(0,0, _canvas.width, _canvas.height);
-    // Render each room
-    // TODO(rh): This is kind of ugly
-    gameRooms.forEach((SynchronizedGameRoom room) {
-      room.players.forEach((Player player) {
-        (player as DemoPlayer).render(_ctx);
-      });
+    gameRoom.players.forEach((Player player) {
+      (player as DemoPlayer).render(_ctx);
     });
   }
 }
@@ -244,15 +239,13 @@ class MyGame extends SynchronizedWebSocketP2PGame<MyLocalPlayer, MyRemotePlayer>
  */
 
 void main() {
-  final SynchronizedWebSocketP2PGame game = new MyGame(webSocketUrl, rtcConfiguration);
-  
-  Chain.capture(() {
-    game.onConnect.listen((_) {
-      print('Connected');
-      game.join('example/game/sync');
-    });
-  }, onError: (error, stack) {
-    print(error);
-    print(stack);
+  final SynchronizedWebSocketP2PGame game = new SynchronizedWebSocketP2PGame(webSocketUrl, rtcConfiguration);
+  game.setGameRoomRendererFactory(new MyGameRoomRendererFactory());
+  game.setProtocolProvider(new MyProtocolProvider());
+  game.setPlayerFactory(new MyPlayerFactory());
+
+  game.onConnect.listen((_) {
+    print('Connected');
+    game.join('example/game/sync');
   });
 }

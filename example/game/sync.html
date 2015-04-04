@@ -6,31 +6,20 @@
   	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>sync</title>
     <style>
-      #canvas {
+      .room {
+        background-color: #f9f9f9;
+        padding: 5px;
+        border: 1px solid #999;
+      }
+
+      .canvas {
         border: 1px solid #ccc;
-        background-color: #f0f0f0;
+        background-color: #fff;
       }
     </style>
   </head>
- 
+
   <body>
-    <div>fps: <span id="fps"></span></div>
-    
-    <div id="rooms">
-      <canvas id="canvas" width="400" height="300"></canvas>
-      <!--
-      <div>
-        max ping: <span id="maxping"></span> [ms]
-      </div>
-      <div>
-        max diff: <span id="maxdifference"></span> [ms]
-      </div>
-      <div>
-        global: <span id="globaltime"></span> [ms]
-      </div>
-      -->
-    </div>
-  
     <script type="application/dart" src="sync.dart"></script>
     <!-- for this next line to work, your pubspec.yaml file must have a dependency on 'browser' -->
     <script src="packages/browser/dart.js"></script>
