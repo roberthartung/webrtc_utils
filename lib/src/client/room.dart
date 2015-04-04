@@ -5,13 +5,14 @@
 part of webrtc_utils.client;
 
 /// Interface for a room that holds a list of peers
-abstract class PeerRoom<P extends Peer, C extends P2PClient> {
+abstract class PeerRoom<P extends Peer/*, C extends P2PClient*/> {
   /// Name of the room
   String get name;
 
+  /*
   /// Client instance for this room - passed to the peer to exchange signaling messages
   C get client;
-
+  */
   /// Iterable to iterate over all peers in this room
   Iterable<P> get peers;
 
@@ -32,7 +33,7 @@ abstract class PeerRoom<P extends Peer, C extends P2PClient> {
 /// An interface that supports sending messages via a protocol to a [ProtocolPeer]
 /// Use [ProtocolP2PClient.setProtocolProvider] to set the instance of your
 /// [ProtocolProvider].
-abstract class ProtocolPeerRoom<P extends ProtocolPeer, C extends ProtocolP2PClient> extends PeerRoom<P, C> {
+abstract class ProtocolPeerRoom<P extends ProtocolPeer/*, C extends ProtocolP2PClient*/> extends PeerRoom<P/*, C*/> {
   /// Call this method when you want to send a message to all peers that have
   /// a [DataChannelProtocol] with an [RtcDataChannel.label] of [channelLabel].
   ///
@@ -45,7 +46,7 @@ abstract class ProtocolPeerRoom<P extends ProtocolPeer, C extends ProtocolP2PCli
 
 /// Internal implementation of a [PeerRoom]
 class _PeerRoom<P extends _Peer, C extends _P2PClient>
-    implements PeerRoom<P, C> {
+    implements PeerRoom<P/*, C*/> {
   final String name;
 
   final C client;
@@ -126,7 +127,7 @@ class _PeerRoom<P extends _Peer, C extends _P2PClient>
 /// A room consisting of [ProtocolPeers] that is a peer that's using
 /// a [DataChannelProtocol] on top of [RtcDataChannel]
 class _ProtocolPeerRoom extends _PeerRoom<_ProtocolPeer, _ProtocolP2PClient>
-    implements ProtocolPeerRoom<_ProtocolPeer, _ProtocolP2PClient> {
+    implements ProtocolPeerRoom<_ProtocolPeer/*, _ProtocolP2PClient*/> {
   _ProtocolPeerRoom(client, name) : super(client, name);
 
   int sendToProtocol(String channelLabel, dynamic message) {

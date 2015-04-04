@@ -4,7 +4,7 @@
 part of webrtc_utils.client;
 
 /// Peer interface class
-abstract class Peer<C extends P2PClient> {
+abstract class Peer/*<C extends P2PClient>*/ {
   /// An integer representing the global id of this peer according to the
   /// [SignalingServer]. This id must be unique for each SignalingServer connection
   /// but might be re-used for multiple rooms.
@@ -13,8 +13,10 @@ abstract class Peer<C extends P2PClient> {
   /// The room this Peer belongs to.
   PeerRoom get room;
 
+  /*
   /// A reference to the [P2PClient]
   C get client;
+  */
 
   /// Map of [RtcDataChannel.label] to the channel
   Map<String, RtcDataChannel> get channels;
@@ -49,7 +51,7 @@ abstract class Peer<C extends P2PClient> {
 }
 
 /// An interface for a protocol peer that extends the regular peer
-abstract class ProtocolPeer<C extends P2PClient> extends Peer<C> {
+abstract class ProtocolPeer/*<C extends P2PClient>*/ extends Peer/*<C>*/ {
   /// Map of [RtcDataChannel.label] to a [DataChannelProtocol]
 
   Map<String, DataChannelProtocol> get protocols;
@@ -65,7 +67,7 @@ abstract class ProtocolPeer<C extends P2PClient> extends Peer<C> {
 /// A peer represents a machine/browser in the system. This is the internal
 /// implementation of the [Peer] interface.
 
-class _Peer<C extends _P2PClient> implements Peer<C> {
+class _Peer<C extends _P2PClient> implements Peer/*<C>*/ {
   final int id;
 
   final _PeerRoom room;
@@ -160,7 +162,7 @@ class _Peer<C extends _P2PClient> implements Peer<C> {
 /// specific protocols.
 
 class _ProtocolPeer extends _Peer<_ProtocolP2PClient>
-    implements ProtocolPeer<_ProtocolP2PClient> {
+    implements ProtocolPeer/*<_ProtocolP2PClient>*/ {
   Stream<DataChannelProtocol> get onProtocol => _onProtocolController.stream;
   StreamController<DataChannelProtocol> _onProtocolController =
       new StreamController.broadcast();
