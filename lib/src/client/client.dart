@@ -22,8 +22,7 @@ abstract class ProtocolP2PClient<R extends ProtocolPeerRoom> extends P2PClient<R
 }
 
 /// Basic P2P Client class
-abstract class _P2PClient<R extends _PeerRoom, P extends _Peer>
-    implements P2PClient<R> {
+abstract class _P2PClient<R extends _PeerRoom, P extends _Peer> {
   /// The signaling channel to use for establishing a connection
   final SignalingChannel _signalingChannel;
 
@@ -118,8 +117,7 @@ abstract class _P2PClient<R extends _PeerRoom, P extends _Peer>
 }
 
 /// A P2PClient that uses a [DataChannelProtocol] on top of a [_Peer]s [RtcDataChannel]
-class _ProtocolP2PClient extends _P2PClient<_ProtocolPeerRoom, _ProtocolPeer>
-    implements ProtocolP2PClient<_ProtocolPeerRoom> {
+class _ProtocolP2PClient extends _P2PClient<_ProtocolPeerRoom, _ProtocolPeer> {
   /// Instance of a protocol provider that is used to instantiate protocols for
   /// the data channel
   ProtocolProvider _protocolProvider = new DefaultProtocolProvider();
@@ -145,13 +143,13 @@ class _ProtocolP2PClient extends _P2PClient<_ProtocolPeerRoom, _ProtocolPeer>
 }
 
 /// A WebSocket implementation for a P2P client
-class WebSocketP2PClient extends _P2PClient<_PeerRoom, _Peer> {
+class WebSocketP2PClient extends _P2PClient<_PeerRoom, _Peer> implements P2PClient<PeerRoom> {
   WebSocketP2PClient(String webSocketUrl, Map _rtcConfiguration)
       : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
 }
 
 /// A WebSocket implementation for a protocol based P2P client
-class WebSocketProtocolP2PClient extends _ProtocolP2PClient {
+class WebSocketProtocolP2PClient extends _ProtocolP2PClient implements ProtocolP2PClient<ProtocolPeerRoom> {
   WebSocketProtocolP2PClient(String webSocketUrl, Map _rtcConfiguration)
       : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
 }
