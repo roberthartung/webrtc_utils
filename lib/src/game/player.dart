@@ -258,7 +258,7 @@ abstract class DefaultSynchronizedRemotePlayer<P extends DataChannelProtocol>
 }
 
 /// Basic class for the synchronized player
-abstract class DefaultSynchronizedLocalPlayer extends DefaultPlayer
+abstract class DefaultSynchronizedLocalPlayer extends DefaultPlayer<SynchronizedGameRoom<_SynchronizedP2PGame, SynchronizedLocalPlayer, SynchronizedRemotePlayer, Player>>
     with DefaultSynchronizedPlayer implements SynchronizedLocalPlayer {
 
   /// When executing events locally, they are scheduled with a delay

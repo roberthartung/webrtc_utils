@@ -45,7 +45,7 @@ class StringProtocol extends RawProtocol<String> {
 /// Interface that provides an instance of [DataChannelProtocol]
 /// Assignment from protocol to [ProtocolProvider] is done using [P2PClient.addProtocolProvider]
 abstract class ProtocolProvider {
-  DataChannelProtocol provide(_Peer peer, RtcDataChannel channel);
+  DataChannelProtocol provide(Peer peer, RtcDataChannel channel);
 }
 
 /// Default implementation of a [ProtocolProvider] that always returns a RawProtocol

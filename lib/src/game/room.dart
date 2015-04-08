@@ -30,7 +30,7 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
   void stopAnimation();
 }
 
-abstract class SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer, P extends Player>
+abstract class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer, P extends Player>
     extends GameRoom<G, L, R, P> {
   double get globalTime;
 

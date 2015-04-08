@@ -41,6 +41,10 @@ class MessageProtocol<M> implements DataChannelProtocol<M> {
   }
 }
 
+class SynchronizedMessageProtocol extends MessageProtocol<SynchronizedGameMessage> {
+  SynchronizedMessageProtocol(channel, MessageFactory<SynchronizedGameMessage> messageFactory) : super(channel, messageFactory);
+}
+
 /// Interface for a game message
 abstract class GameMessage {}
 
