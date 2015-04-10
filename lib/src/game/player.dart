@@ -149,9 +149,10 @@ abstract class DefaultSynchronizedPlayer implements SynchronizedPlayer {
   /// [SynchronizedP2PGame.targetTickRate] which is set in the constructor
   void tick(int tick) {
     while (!_messageQueue.isEmpty && _messageQueue.peekKey() < tick) {
-      print(
-          '[$this] Dropped delayed messages: ${_messageQueue.peekKey()} < $tick');
-      _messageQueue.poll();
+      // print('[$this] Dropped delayed messages: ${_messageQueue.peekKey()} < $tick');
+      _messageQueue.poll().forEach((message) {
+        handleMessage(message);
+      });
     }
 
     if (!_messageQueue.isEmpty && _messageQueue.peekKey() == tick) {
@@ -258,7 +259,8 @@ abstract class DefaultSynchronizedRemotePlayer<P extends DataChannelProtocol>
 }
 
 /// Basic class for the synchronized player
-abstract class DefaultSynchronizedLocalPlayer extends DefaultPlayer<SynchronizedGameRoom<_SynchronizedP2PGame, SynchronizedLocalPlayer, SynchronizedRemotePlayer, Player>>
+abstract class DefaultSynchronizedLocalPlayer
+    extends DefaultPlayer<SynchronizedGameRoom<_SynchronizedP2PGame, SynchronizedLocalPlayer, SynchronizedRemotePlayer, Player>>
     with DefaultSynchronizedPlayer implements SynchronizedLocalPlayer {
 
   /// When executing events locally, they are scheduled with a delay
