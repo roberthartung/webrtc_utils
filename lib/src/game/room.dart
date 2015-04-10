@@ -1,54 +1,94 @@
 /// NOTE: We do not extend [Room] because it uses an internal constructor.
-///    Another good side effect is that we can hide the room from the user
-///    So he cannot work on [PeerConnection]s directly.
+///   Another good side effect is that we can hide the room from the user
+///   So he cannot work on [PeerConnection]s directly.
 part of webrtc_utils.game;
 
 /// Interface for the GameRoom
 abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends RemotePlayer, P extends Player> {
+  /// The game this room belongs to
   G get game;
 
+  /// Can be used to check if the localplayer is the game owner
   bool get isOwner;
 
+  /// The owner of the game
   P get owner;
 
+  /// The local Player
+  ///
+  /// TODO(rh): Should we support multiple local players?
   L get localPlayer;
 
+  /// A class that is responsible for rendering the room
   GameRoomRenderer get renderer;
 
+  /// The underlying room
   ProtocolPeerRoom get room;
 
   /// A list of all players already in the room.
-  ///
-  /// Note: This list does not contain the [LocalPlayer].
   List<P> get players;
 
+  /// List of remote players
   Iterable<R> get remotePlayers;
 
+  /// Stream that informs about players that join
+  ///
+  /// Note: This does not include the initial list of players. Use the [players]
+  /// getter for an initial list of players
   Stream<R> get onPlayerJoin;
 
+  /// Stream that informs about players that leave the room
   Stream<R> get onPlayerLeave;
 
+  /// Stream that notifies about changes in the game owner.
+  ///
+  /// Note: Does not fire for initial game owner
   Stream<P> get onGameOwnerChanged;
 
+  /// Starts the animation loop in this room
   void startAnimation();
 
+  /// Stops the animation
   void stopAnimation();
 }
 
+/// An interface for a synchronized version of a [GameRoom]
+/// It provides mechanisms to create a global time (ticks) across all players.
+///
+/// The [synchronizeMessage] method can be used to synchronize a message across
+/// all players.
+///
+/// Whenever a player joins the [onSynchronizationStateChanged] event will be
+/// fired with to notify that the game is not in sync any more (argument is
+/// false in this case). When the ping and global time was exchanged the event
+/// will fire once more.
 abstract class SynchronizedGameRoom<G extends SynchronizedP2PGame, L extends SynchronizedLocalPlayer, R extends SynchronizedRemotePlayer, P extends Player>
     extends GameRoom<G, L, R, P> {
+  /// The global time that is [window.performance.now()] + [timeDifferenceToMaster]
   double get globalTime;
 
+  /// An int representing the global tick
   int get globalTick;
 
+  /// Max ping within the last second across all players
   num get maxPing;
 
+  /// The time difference to the master (game owner)
   num get timeDifferenceToMaster;
 
+  /// Stream that notifies about changes in the synchronization state (e.g. if
+  /// a player joins of leaves the room). This can be used to disable buttons
+  /// so a game can not be started while synchronization is in progress.
   Stream get onSynchronizationStateChanged;
 
+  /// Getter to check if this room is synchronized
   bool get isSynchronized;
 
+  /// Synchronizes a message across all players with a delay of [tickDelay]
+  /// ticks.
+  ///
+  /// Note: The number of ticks per second can be configured using the getter of
+  /// your [GameRoomRenderer]
   void synchronizeMessage(GameMessage message, {int tickDelay: 1});
 }
 
@@ -58,10 +98,13 @@ class _GameRoom<G extends _P2PGame, L extends LocalPlayer, R extends RemotePlaye
   /// Indicator if we're still in the animation loop
   var _animationLoop = true;
 
+  /// Internal variable
   GameRoomRenderer _gameRoomRenderer;
 
+  /// Returns the [GameRoomRenderer] instance for this room
   GameRoomRenderer get renderer => _gameRoomRenderer;
 
+  /// Can be used to get the [P2PGame] this room belongs to
   final G game;
 
   /// Set if the LocalPlayer is the owner of the game (room)
@@ -171,6 +214,7 @@ class _GameRoom<G extends _P2PGame, L extends LocalPlayer, R extends RemotePlaye
 
   /// Start animation in all rooms
   void startAnimation() {
+    // TODO(rh): Use the current time to calculate an offset!
     _animationLoop = true;
     window.animationFrame.then(_animationFrame);
   }
@@ -209,7 +253,8 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
       : window.performance.now() + timeDifferenceToMaster;
 
   /// Getter that returns the current global tick
-  int get globalTick => globalTime ~/ (1000.0 / _gameRoomRenderer.targetTickRate);
+  int get globalTick =>
+      globalTime ~/ (1000.0 / _gameRoomRenderer.targetTickRate);
 
   /// Internal variable for holding the maximum ping. The maximum ping will be adjusted
   /// every second by taking 50% of the old maximum ping and 50% of the new maximum ping,
@@ -245,7 +290,9 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
   bool _isSynchronized = true;
 
   /// Constructor of the [SynchronizedGameRoom] class
-  _SynchronizedGameRoom(G game, ProtocolPeerRoom room, GameRoomRendererFactory gameRoomRendererFactory) : super(game, room, gameRoomRendererFactory) {
+  _SynchronizedGameRoom(G game, ProtocolPeerRoom room,
+      GameRoomRendererFactory gameRoomRendererFactory)
+      : super(game, room, gameRoomRendererFactory) {
     // Loop through existing players in the channel
     remotePlayers.forEach(_onPlayerJoined);
     onPlayerJoin.listen((R remotePlayer) {
@@ -297,6 +344,7 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
     double maxPing = null;
     _maxPositiveTimeDifference = null;
 
+    // counter to check if any player is not synchronized
     int numOfPlayersOutOfSync = 0;
 
     // Loop through players and
@@ -315,17 +363,20 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
         numOfPlayersOutOfSync++;
       }
 
-      // ping might be null at first run
+      // ping might be null at first run, thus set maxPing if its null or it is
+      // higher
       if (remotePlayer.ping != null &&
           (maxPing == null || remotePlayer.ping > maxPing)) {
         maxPing = remotePlayer.ping;
       }
     });
 
+    // Take the average max ping
     if (maxPing != null) {
       if (_maxPing == null || maxPing > _maxPing) {
         _maxPing = maxPing;
       } else {
+        // TODO(rh): Do we need this?
         _maxPing = _maxPing * .5 + maxPing * .5;
       }
 
@@ -333,12 +384,15 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
       // TODO(rh): Should we provide an onMaxPing stream?
     }
 
+    // Fire the synchronization event
     if (numOfPlayersOutOfSync == 0) {
       if (!isSynchronized) {
         _isSynchronized = true;
         _onSynchronizationStateChangedController.add(isSynchronized);
       }
     }
+    // Note: The event with "false" as an argument will be fired when a [Player]
+    //   joins the room.
   }
 
   /// Synchronizes a [GameMessage] across all players in this room and optionally
@@ -353,13 +407,14 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
     if (tickDelay < 1) {
       throw new ArgumentError("tickDelay cannnot less than 1!");
     }
-
+    // All messages will always be delayed by two times the ping to make sure
+    // small differences don't have an effect on the synchronization.
     double targetTime = (globalTime + 2 * maxPing);
-    int targetTick = targetTime ~/ (1000.0 / _gameRoomRenderer.targetTickRate) + tickDelay;
-
+    // Convert time to ticks and add tick delay
+    int targetTick =
+        targetTime ~/ (1000.0 / _gameRoomRenderer.targetTickRate) + tickDelay;
     SynchronizedGameMessage sm =
         new SynchronizedGameMessage(targetTick, message);
-
     // Send message to all remote players
     room.sendToProtocol('game', sm);
     // Queue message in local player
@@ -378,6 +433,9 @@ class _SynchronizedGameRoom<G extends _SynchronizedP2PGame, L extends Synchroniz
     for (int t = _lastDeliveredTick + 1; t <= lastTick; t++) {
       // If t == next key in message queue, get list of messages and deliver each message for this tick.
       // Deliver messages for each player in the game independently
+
+      renderer.tick(t);
+
       /*
       players.forEach((Player player) {
         (player as SynchronizedPlayer).tick(t);

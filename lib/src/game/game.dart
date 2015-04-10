@@ -33,10 +33,20 @@ abstract class PlayerFactory<L extends LocalPlayer, R extends RemotePlayer> {
   R createRemotePlayer(GameRoom room, ProtocolPeer peer);
 }
 
+/// An interface used by [P2PGame] and [SynchronizedP2PGame] to be able to
+/// render each room differently.
 ///
+/// Provide a getter to set the target tick rate
 abstract class GameRoomRenderer<R extends GameRoom> {
   int get targetTickRate;
 
+  /// Method that gets called [targetTickRate] times per second. When the browser
+  /// is not focused and no rendering happens, no ticks will be generated either.
+  /// But at a later time all ticks will be generated.
+  void tick(int t);
+
+  /// Render the game room. Called a variable tick rate depending on the browser
+  /// an if the tab/the window is focused or not
   void render();
 }
 
@@ -78,11 +88,7 @@ abstract class _P2PGame<L extends LocalPlayer, R extends RemotePlayer, G extends
       _onGameRoomCreatedController.add(gameRoom);
     });
 
-    // TODO(rh): When disconnecting cleanup rooms?
-    onDisconnect.listen((int reason) {
-      // print('P2PGame disconnected from signaling channel. Reason: $reason');
-      // cleanup();
-    });
+    // TODO(rh): Cleanup rooms?
   }
 
   /// Creates a game room
