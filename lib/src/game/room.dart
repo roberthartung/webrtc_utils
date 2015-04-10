@@ -9,12 +9,17 @@ abstract class GameRoom<G extends P2PGame, L extends LocalPlayer, R extends Remo
 
   bool get isOwner;
 
+  P get owner;
+
   L get localPlayer;
 
   GameRoomRenderer get renderer;
 
   ProtocolPeerRoom get room;
 
+  /// A list of all players already in the room.
+  ///
+  /// Note: This list does not contain the [LocalPlayer].
   List<P> get players;
 
   Iterable<R> get remotePlayers;
@@ -62,6 +67,7 @@ class _GameRoom<G extends _P2PGame, L extends LocalPlayer, R extends RemotePlaye
   /// Set if the LocalPlayer is the owner of the game (room)
   bool get isOwner => _gameOwner == localPlayer;
   P _gameOwner = null;
+  P get owner => _gameOwner;
 
   /// List of remote Players in the game
   final Map<Peer, R> peerToPlayer = {};
@@ -103,14 +109,14 @@ class _GameRoom<G extends _P2PGame, L extends LocalPlayer, R extends RemotePlaye
 
   _GameRoom(this.game, this._room, GameRoomRendererFactory factory) {
     _gameRoomRenderer = factory.createRenderer(this);
-    _localPlayer = game.playerFactory.createLocalPlayer(this, game.id);
-    _playerJoined(_localPlayer);
     _room.peers.forEach((Peer peer) {
       // R player = createRemotePlayer(peer);
       R player = game.playerFactory.createRemotePlayer(this, peer);
       peerToPlayer[peer] = player;
       _playerJoined(player);
     });
+    _localPlayer = game.playerFactory.createLocalPlayer(this, game.id);
+    _playerJoined(_localPlayer);
     // Initially get game owner, after this the owner only changes if the player leaves
     _getGameOwner();
     // When a new player joins
