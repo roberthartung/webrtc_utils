@@ -3,8 +3,10 @@ part of webrtc_utils.client;
 /// Interface for the signaling channel. The signaling channel is used to exchange
 /// data between two peers.
 abstract class SignalingChannel {
+  bool get isConnected;
   Stream<SignalingMessage> get onMessage;
   Stream<int> get onClose;
+  Stream<int> get onError;
   Stream get onOpen;
   void send(SignalingMessage message);
 }
@@ -75,9 +77,17 @@ class WebSocketSignalingChannel implements SignalingChannel {
   final StreamController<int> _onCloseController =
       new StreamController.broadcast();
 
+  /// Stream of close events of this signaling channel
+  Stream<int> get onError => _onErrorController.stream;
+  final StreamController<int> _onErrorController =
+      new StreamController.broadcast();
+
   /// Stream of open events of this signaling channel
   Stream get onOpen => _onOpenController.stream;
   final StreamController _onOpenController = new StreamController.broadcast();
+
+  bool get isConnected => _connected;
+  bool _connected = false;
 
   /// Constructor: Tales a websocket Url and creates a connection using the "webrtc_signaling" protocol
   WebSocketSignalingChannel(String webSocketUrl)
@@ -89,19 +99,25 @@ class WebSocketSignalingChannel implements SignalingChannel {
     _ws.onError.listen(_onError);
   }
 
+  /// Internal handler for the onOpen event
   void _onOpen(Event ev) {
     _onOpenController.add(null);
   }
 
+  /// Internal handler for the onClose event
   void _onClose(CloseEvent ev) {
-    //print('[$this] Closed: ${ev.reason}');
     _onCloseController.add(ev.code);
+    _connected = false;
   }
 
+  /// Internal handler for the onError event.
+  ///
+  /// Note: The error event happens before the close event.
   void _onError(Event ev) {
-    //print('[$this] Error');
+    _ws.onClose.first.then((CloseEvent ev) {
+      _onErrorController.add(ev.code);
+    });
   }
-
   /// Sends a SignalingMessage through the WebSocket as a JSON string
   void send(SignalingMessage message) {
     if (_ws == null || _ws.readyState != WebSocket.OPEN) {

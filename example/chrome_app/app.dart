@@ -8,7 +8,7 @@ import 'package:webrtc_utils/client.dart';
   // , "omnibox"
 */
 
-final String url = 'ws://roberthartung.dyndns.org:28080';
+final String url = 'ws://signaling.roberthartung.de:28080';
 P2PClient client;
 
 void _peerJoined(Peer peer) {
@@ -35,8 +35,15 @@ void _peerJoined(Peer peer) {
 }
 
 void main() {
-  print('loaded');
   client = new WebSocketP2PClient(url, rtcConfiguration);
+
+  client.onDisconnect.listen((d) {
+    print('Disconnected: $d');
+  });
+
+  client.onError.listen((r) {
+    print('Error: $r');
+  });
 
   client.onConnect.listen((localId) {
     print('I am connected. Joining room.');
@@ -49,19 +56,18 @@ void main() {
     room.onPeerJoin.listen(_peerJoined);
   });
 
-  /*
   identity.getAccounts().then((List<AccountInfo> accounts) {
     print(accounts);
   });
-  */
 
   identity.onSignInChanged.listen((OnSignInChangedEvent ev) {
     if(ev.signedIn) {
+      print('User logged in.');
       identity.getProfileUserInfo().then((ProfileUserInfo info) {
         print('RoomName: ${info.email} Password: ${info.id}');
         client.join(info.email, info.id);
         InputElement a = querySelector('#localroomname');
-        a.value = 'http://cdnbot.rhscripts.de/webrtc/example/video.html#' + Uri.encodeFull(info.email);
+        a.value = 'http://webrtc.rhscripts.de/example/video.html#' + Uri.encodeFull(info.email);
       });
     } else {
       print('User logged out.');

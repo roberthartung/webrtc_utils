@@ -5,19 +5,35 @@ abstract class P2PClient<R extends PeerRoom> {
   /// Local ID assigned by the signaling server
   int get id;
 
+  /// A map representing the rtcConfiguration that is used by the [Peer]s.
+  Map get rtcConfiguration;
+
+  /// Stream of ints that indicate that we are connected to the signaling server
+  /// the int represents the local id
   Stream<int> get onConnect;
 
-  Stream get onDisconnect;
+  /// Stream of events that indicate that we were disconnected from the signaling
+  /// server
+  Stream<int> get onDisconnect;
 
+  /// Stream of ints that represent errors while connecting to the server
+  Stream<int> get onError;
+
+  /// Stream of rooms that we have joined
   Stream<R> get onJoinRoom;
 
+  /// Stream of rooms that we have left
   Stream<R> get onLeaveRoom;
 
+  /// Method to request to join a room
   void join(String roomName, [String password = null]);
 }
 
-/// Interface for
-abstract class ProtocolP2PClient<R extends ProtocolPeerRoom> extends P2PClient<R> {
+/// Interface for a protocol based peer2peer client
+abstract class ProtocolP2PClient<R extends ProtocolPeerRoom>
+    extends P2PClient<R> {
+  /// Sets the instance of an [ProtocolProvider] that is used to create
+  /// protocol instances for each peer/channel.
   void setProtocolProvider(ProtocolProvider provider);
 }
 
@@ -27,10 +43,11 @@ abstract class _P2PClient<R extends _PeerRoom, P extends _Peer> {
   final SignalingChannel _signalingChannel;
 
   /// The rtcConfiguration Map that specifies iceServers
-  final Map _rtcConfiguration;
+  final Map rtcConfiguration;
 
-  int _id;
+  /// An int representing the local id assigned by the [SignalingServer]
   int get id => _id;
+  int _id;
 
   /// List of rooms the client is participating in
   final Map<String, _PeerRoom> rooms = {};
@@ -38,6 +55,10 @@ abstract class _P2PClient<R extends _PeerRoom, P extends _Peer> {
   /// Event stream for when the connection to the signaling server is established
   Stream<int> get onConnect => _onConnectController.stream;
   final StreamController<int> _onConnectController =
+      new StreamController.broadcast();
+
+  Stream<int> get onError => _onErrorStreamController.stream;
+  final StreamController<int> _onErrorStreamController =
       new StreamController.broadcast();
 
   /// Event stream for when the connection to the signaling server is established
@@ -56,10 +77,10 @@ abstract class _P2PClient<R extends _PeerRoom, P extends _Peer> {
       new StreamController.broadcast();
 
   /// Constructor
-  _P2PClient(this._signalingChannel, this._rtcConfiguration) {
+  _P2PClient(this._signalingChannel, this.rtcConfiguration) {
     _signalingChannel.onMessage.listen(_onSignalingMessage);
-    _signalingChannel.onClose
-        .listen((int reason) => _onDisconnectController.add(reason));
+    _onDisconnectController.addStream(_signalingChannel.onClose);
+    _onErrorStreamController.addStream(_signalingChannel.onError);
   }
 
   /// Joins a [room] with an optional [password]
@@ -111,7 +132,8 @@ abstract class _P2PClient<R extends _PeerRoom, P extends _Peer> {
     return new _Peer(room, peerId, this);
   }
 
-  _PeerRoom createRoom(String name) {
+  /// Method to create a new room
+  R createRoom(String name) {
     return new _PeerRoom<_Peer, _P2PClient>(this, name);
   }
 }
@@ -143,13 +165,15 @@ class _ProtocolP2PClient extends _P2PClient<_ProtocolPeerRoom, _ProtocolPeer> {
 }
 
 /// A WebSocket implementation for a P2P client
-class WebSocketP2PClient extends _P2PClient<_PeerRoom, _Peer> implements P2PClient<PeerRoom> {
+class WebSocketP2PClient extends _P2PClient<_PeerRoom, _Peer>
+    implements P2PClient<PeerRoom> {
   WebSocketP2PClient(String webSocketUrl, Map _rtcConfiguration)
       : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
 }
 
 /// A WebSocket implementation for a protocol based P2P client
-class WebSocketProtocolP2PClient extends _ProtocolP2PClient implements ProtocolP2PClient<ProtocolPeerRoom> {
+class WebSocketProtocolP2PClient extends _ProtocolP2PClient
+    implements ProtocolP2PClient<ProtocolPeerRoom> {
   WebSocketProtocolP2PClient(String webSocketUrl, Map _rtcConfiguration)
       : super(new WebSocketSignalingChannel(webSocketUrl), _rtcConfiguration);
 }

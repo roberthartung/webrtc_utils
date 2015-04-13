@@ -224,6 +224,10 @@ class MyGameRoomRenderer<G extends SynchronizedGameRoom> implements GameRoomRend
     gameRoom.startAnimation();
   }
 
+  void tick(int tick) {
+
+  }
+
   void render() {
     _fpsCounter++;
     _ctx.clearRect(0,0, _canvas.width, _canvas.height);
