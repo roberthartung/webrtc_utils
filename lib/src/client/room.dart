@@ -46,7 +46,7 @@ abstract class ProtocolPeerRoom<P extends ProtocolPeer/*, C extends ProtocolP2PC
 
 /// Internal implementation of a [PeerRoom]
 class _PeerRoom<P extends _Peer, C extends _P2PClient>
-    implements PeerRoom<P/*, C*/> {
+    implements PeerRoom<P> {
   final String name;
 
   final C client;
@@ -72,27 +72,7 @@ class _PeerRoom<P extends _Peer, C extends _P2PClient>
   void onSignalingMessage(SignalingMessage sm) {
     // In this case the peerId of the [SignalingMessage] is the source peerId
     final _Peer peer = _peers[sm.peerId];
-    final RtcPeerConnection pc = peer._pc;
-
-    if (sm is SessionDescriptionMessage) {
-      RtcSessionDescription desc = sm.description;
-      if (desc.type == 'offer') {
-        pc.setRemoteDescription(desc).then((_) {
-          pc.createAnswer().then((RtcSessionDescription answer) {
-            pc.setLocalDescription(answer).then((_) {
-              client._signalingChannel
-                  .send(new SessionDescriptionMessage(name, peer.id, answer));
-            });
-          });
-        });
-      } else {
-        pc.setRemoteDescription(desc);
-      }
-    } else if (sm is IceCandidateMessage) {
-      pc.addIceCandidate(sm.candidate, () {/* ... */}, (error) {
-        print('[ERROR] Unable to add IceCandidateMessage: $error');
-      });
-    }
+    peer._handleSignalingMessage(sm);
   }
 
   /// Add peer to the room and fire event

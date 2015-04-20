@@ -67,7 +67,7 @@ abstract class ProtocolPeer /*<C extends P2PClient>*/ extends Peer /*<C>*/ {
 /// A peer represents a machine/browser in the system. This is the internal
 /// implementation of the [Peer] interface.
 
-class _Peer<C extends _P2PClient> implements Peer /*<C>*/ {
+class _Peer<C extends _P2PClient> implements Peer {
   final int id;
 
   final _PeerRoom room;
@@ -126,6 +126,9 @@ class _Peer<C extends _P2PClient> implements Peer /*<C>*/ {
 //    });
   }
 
+  /// Internal helper function to add a [RtcDataChannel] to the stream. This will
+  /// be called directly when creating a channel or when the remote peer opens
+  /// a connection.
   void _notifyChannelCreated(RtcDataChannel channel) {
     channels[channel.label] = channel;
     channel.onClose.listen((Event ev) {
@@ -134,17 +137,44 @@ class _Peer<C extends _P2PClient> implements Peer /*<C>*/ {
     _onChannelController.add(channel);
   }
 
+  /// See [Peer.createChannel]
   void createChannel(String label, [Map options = null]) {
     _notifyChannelCreated(_pc.createDataChannel(label, options));
   }
 
+  /// See [Peer.addStream]
   void addStream(MediaStream ms, [Map<String, String> mediaConstraints]) {
     _pc.addStream(ms);
   }
 
+  /// See [Peer.removeStream]
   void removeStream(MediaStream ms) {
     // TODO(rh): Should we use _pc.getLocalStreams() and see if [ms] is in there?
     _pc.removeStream(ms);
+  }
+
+  /// Called internally by [_PeerRoom.onSignalingMessage] to handle the message
+  /// locally.
+  void _handleSignalingMessage(SignalingMessage sm) {
+    if (sm is SessionDescriptionMessage) {
+      RtcSessionDescription desc = sm.description;
+      if (desc.type == 'offer') {
+        _pc.setRemoteDescription(desc).then((_) {
+          _pc.createAnswer().then((RtcSessionDescription answer) {
+            _pc.setLocalDescription(answer).then((_) {
+              client._signalingChannel
+                  .send(new SessionDescriptionMessage(room.name, id, answer));
+            });
+          });
+        });
+      } else {
+        _pc.setRemoteDescription(desc);
+      }
+    } else if (sm is IceCandidateMessage) {
+      _pc.addIceCandidate(sm.candidate, () {/* ... */}, (error) {
+        print('[ERROR] Unable to add IceCandidateMessage: $error');
+      });
+    }
   }
 
   String toString() => 'Peer#$id';
