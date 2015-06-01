@@ -1,3 +1,9 @@
+# Changelog
+
+## 0.2.1+1
+
+- Added support for SDK 1.10.1
+
 ## 0.2.1
 - Fix:    Interfaces used internal classes
 - Change: Delayed synchronized messages in a game no longer get dropped.
